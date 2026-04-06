@@ -6,6 +6,7 @@ import type {
   EmailAccountWriteInput,
 } from "./schema";
 import { getEmailAccountOrderRules } from "./sort";
+import { calculateEmailAccountStats, type EmailAccountDashboardStats } from "./stats";
 
 export type EmailAccountListResult = {
   items: EmailAccountRecord[];
@@ -14,6 +15,22 @@ export type EmailAccountListResult = {
   pageSize: number;
   totalPages: number;
 };
+
+export async function getEmailAccountDashboardStats(): Promise<EmailAccountDashboardStats> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("email_accounts")
+    .select(
+      "id, email_name, user_name, birthday, registered_at, registered_location, is_linked_s2a, linked_at, is_expired, expired_at, deleted_at, created_at, updated_at",
+    )
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new Error(`查询邮箱统计失败：${error.message}`);
+  }
+
+  return calculateEmailAccountStats((data ?? []) as EmailAccountRecord[]);
+}
 
 export async function listEmailAccounts(
   filters: EmailAccountFilters,

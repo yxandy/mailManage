@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import type { EmailAccountRecord } from "@/lib/email-accounts/schema";
+import type { EmailAccountDashboardStats } from "@/lib/email-accounts/stats";
 
 import { EmailAccountFormDialog } from "./email-account-form-dialog";
 import { Pagination } from "./pagination";
@@ -11,6 +12,7 @@ import { Pagination } from "./pagination";
 type DashboardClientProps = {
   username: string;
   items: EmailAccountRecord[];
+  stats: EmailAccountDashboardStats;
   currentPage: number;
   totalPages: number;
   total: number;
@@ -41,6 +43,7 @@ function formatDate(value?: string | null, includeTime = false) {
 export function DashboardClient({
   username,
   items,
+  stats,
   currentPage,
   totalPages,
   total,
@@ -99,6 +102,37 @@ export function DashboardClient({
                 <p className="text-sm leading-7 text-[var(--muted)]">
                   当前登录管理员：{username}，共 {total} 条有效记录。
                 </p>
+              </div>
+              <div className="grid flex-1 gap-3 md:grid-cols-3 lg:max-w-3xl">
+                <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                    还未关联
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold">{stats.unlinkedCount}</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">邮箱数量</p>
+                </div>
+                <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                    失效占比
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold">
+                    {stats.expiredPercentage.toFixed(1)}%
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">已失效 / 全部有效记录</p>
+                </div>
+                <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                    平均存活
+                  </p>
+                  <p className="mt-2 text-2xl font-semibold">
+                    {stats.averageLinkedLifetimeDays === null
+                      ? "-"
+                      : `${stats.averageLinkedLifetimeDays.toFixed(1)}天`}
+                  </p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    已关联且已失效邮箱平均时长
+                  </p>
+                </div>
               </div>
               <div className="flex flex-wrap gap-3">
                 <button
