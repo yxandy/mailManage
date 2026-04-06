@@ -125,10 +125,21 @@ export function DashboardClient({
               <div className="grid flex-1 gap-3 md:grid-cols-3 lg:max-w-3xl">
                 <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-4">
                   <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                    还未关联
+                    关联状态
                   </p>
-                  <p className="mt-2 text-2xl font-semibold">{stats.unlinkedCount}</p>
-                  <p className="mt-1 text-sm text-[var(--muted)]">邮箱数量</p>
+                  <div className="mt-3 grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-[var(--muted)]">未关联</p>
+                      <p className="mt-1 text-2xl font-semibold">{stats.unlinkedCount}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-[var(--muted)]">已关联</p>
+                      <p className="mt-1 text-2xl font-semibold">
+                        {Math.max(total - stats.unlinkedCount, 0)}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-sm text-[var(--muted)]">有效邮箱数量分布</p>
                 </div>
                 <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-4">
                   <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
