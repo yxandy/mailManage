@@ -5,6 +5,7 @@ import type {
   EmailAccountRecord,
   EmailAccountWriteInput,
 } from "./schema";
+import { getEmailAccountOrderRules } from "./sort";
 
 export type EmailAccountListResult = {
   items: EmailAccountRecord[];
@@ -27,8 +28,11 @@ export async function listEmailAccounts(
   let query = supabase
     .from("email_accounts")
     .select("*", { count: "exact" })
-    .is("deleted_at", null)
-    .order("registered_at", { ascending: false });
+    .is("deleted_at", null);
+
+  for (const rule of getEmailAccountOrderRules()) {
+    query = query.order(rule.column, rule.options);
+  }
 
   if (keyword) {
     query = query.or(`email_name.ilike.%${keyword}%,user_name.ilike.%${keyword}%`);
