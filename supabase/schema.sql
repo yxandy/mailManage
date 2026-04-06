@@ -11,10 +11,10 @@ create table if not exists public.admin_users (
 create table if not exists public.email_accounts (
   id uuid primary key default gen_random_uuid(),
   email_name text not null,
-  user_name text not null,
+  user_name text,
   birthday date,
-  registered_at timestamptz not null,
-  registered_location text not null,
+  registered_at timestamptz,
+  registered_location text,
   is_linked_s2a boolean not null default false,
   linked_at timestamptz,
   is_expired boolean not null default false,

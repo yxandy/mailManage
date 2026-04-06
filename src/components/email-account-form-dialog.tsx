@@ -203,15 +203,14 @@ export function EmailAccountFormDialog({
             </div>
             <label className="grid gap-2 text-sm">
               <span className="text-[var(--muted)]">用户姓名</span>
-              <input
-                className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-                value={formState.user_name}
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, user_name: event.target.value }))
-                }
-                required
-              />
-            </label>
+                <input
+                  className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                  value={formState.user_name}
+                  onChange={(event) =>
+                    setFormState((current) => ({ ...current, user_name: event.target.value }))
+                  }
+                />
+              </label>
             <label className="grid gap-2 text-sm">
               <span className="text-[var(--muted)]">注册地点</span>
               <input
@@ -223,7 +222,6 @@ export function EmailAccountFormDialog({
                     registered_location: event.target.value,
                   }))
                 }
-                required
               />
             </label>
             <label className="grid gap-2 text-sm">
@@ -246,7 +244,6 @@ export function EmailAccountFormDialog({
                 onChange={(event) =>
                   setFormState((current) => ({ ...current, registered_at: event.target.value }))
                 }
-                required
               />
             </label>
           </div>

@@ -8,10 +8,10 @@ test("账号名称和预设域名会合并成 email_name", () => {
     email_account_name: "test",
     email_domain: "gmail.com",
     custom_email_domain: "",
-    user_name: "张三",
-    birthday: "2000-01-01",
-    registered_at: "2026-04-06T10:00",
-    registered_location: "香港",
+    user_name: "",
+    birthday: "",
+    registered_at: "",
+    registered_location: "",
     is_linked_s2a: false,
     linked_at: "",
     is_expired: false,
@@ -26,10 +26,10 @@ test("选择自定义域名时会合并自定义域名", () => {
     email_account_name: "test",
     email_domain: "custom",
     custom_email_domain: "example.com",
-    user_name: "张三",
-    birthday: "2000-01-01",
-    registered_at: "2026-04-06T10:00",
-    registered_location: "香港",
+    user_name: "",
+    birthday: "",
+    registered_at: "",
+    registered_location: "",
     is_linked_s2a: false,
     linked_at: "",
     is_expired: false,
@@ -37,6 +37,41 @@ test("选择自定义域名时会合并自定义域名", () => {
   });
 
   assert.equal(result.email_name, "test@example.com");
+});
+
+test("除邮箱账号名称外的其他字段都允许为空", () => {
+  const result = normalizeEmailAccountInput({
+    email_account_name: "test",
+    email_domain: "gmail.com",
+    custom_email_domain: "",
+    user_name: "",
+    birthday: "",
+    registered_at: "",
+    registered_location: "",
+    is_linked_s2a: false,
+    linked_at: "",
+    is_expired: false,
+    expired_at: "",
+  });
+
+  assert.deepEqual(
+    {
+      user_name: result.user_name,
+      birthday: result.birthday,
+      registered_at: result.registered_at,
+      registered_location: result.registered_location,
+      linked_at: result.linked_at,
+      expired_at: result.expired_at,
+    },
+    {
+      user_name: null,
+      birthday: null,
+      registered_at: null,
+      registered_location: null,
+      linked_at: null,
+      expired_at: null,
+    },
+  );
 });
 
 test("已有 email_name 可以拆分为账号和域名", () => {
@@ -54,10 +89,10 @@ test("未关联 s2a 时会清空关联时间", () => {
     email_account_name: "test",
     email_domain: "gmail.com",
     custom_email_domain: "",
-    user_name: "张三",
-    birthday: "2000-01-01",
-    registered_at: "2026-04-06T10:00",
-    registered_location: "香港",
+    user_name: "",
+    birthday: "",
+    registered_at: "",
+    registered_location: "",
     is_linked_s2a: false,
     linked_at: "2026-04-06T12:00",
     is_expired: false,
@@ -72,12 +107,12 @@ test("未失效时会清空失效时间", () => {
     email_account_name: "test",
     email_domain: "gmail.com",
     custom_email_domain: "",
-    user_name: "张三",
-    birthday: "2000-01-01",
-    registered_at: "2026-04-06T10:00",
-    registered_location: "香港",
+    user_name: "",
+    birthday: "",
+    registered_at: "",
+    registered_location: "",
     is_linked_s2a: true,
-    linked_at: "2026-04-06T12:00",
+    linked_at: "",
     is_expired: false,
     expired_at: "2026-04-07T12:00",
   });
@@ -85,16 +120,16 @@ test("未失效时会清空失效时间", () => {
   assert.equal(result.expired_at, null);
 });
 
-test("缺少必填字段时抛出错误", () => {
+test("缺少邮箱账号名称时抛出错误", () => {
   assert.throws(() =>
     normalizeEmailAccountInput({
       email_account_name: "",
       email_domain: "gmail.com",
       custom_email_domain: "",
-      user_name: "张三",
+      user_name: "",
       birthday: "",
-      registered_at: "2026-04-06T10:00",
-      registered_location: "香港",
+      registered_at: "",
+      registered_location: "",
       is_linked_s2a: false,
       linked_at: "",
       is_expired: false,

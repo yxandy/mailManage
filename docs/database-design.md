@@ -36,10 +36,10 @@
 
 - `id`：主键
 - `email_name`：邮箱账号名称
-- `user_name`：用户姓名
+- `user_name`：用户姓名，可空
 - `birthday`：用户生日
-- `registered_at`：注册时间
-- `registered_location`：注册地点
+- `registered_at`：注册时间，可空
+- `registered_location`：注册地点，可空
 - `is_linked_s2a`：是否关联 `s2a`
 - `linked_at`：关联时间
 - `is_expired`：是否已失效
@@ -55,6 +55,7 @@
 - 列表查询默认过滤 `deleted_at is not null` 的记录。
 - `birthday` 使用日期类型。
 - `registered_at`、`linked_at`、`expired_at` 使用时间戳类型。
+- 当前仅 `email_name` 为必填字段，其他业务字段允许为空。
 
 ## 索引建议
 
