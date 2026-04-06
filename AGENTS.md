@@ -1,5 +1,31 @@
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+# 仓库协作约定
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+## 通用规则
+
+1. 回复一律使用中文。
+2. 生成的非代码类文件一律使用中文编写。
+3. 代码中的注释一律使用中文编写。
+4. 生成表格类文件时，优先使用 `xlsx` 格式。
+
+## 当前项目约定
+
+1. 当前项目为“邮箱账号管理系统”。
+2. 默认技术栈为 `Next.js + TypeScript + Supabase + Vercel`。
+3. 前端路由使用 App Router。
+4. 页面与接口代码放在 `src` 目录下。
+5. 数据库结构与初始化脚本放在 `supabase` 目录下。
+6. 需求方案、实施计划、部署说明放在 `docs` 目录下。
+
+## 开发约定
+
+1. 优先保持实现简单直接，不为第一版提前引入多角色、导出、审计等未确认需求。
+2. 涉及密码时，不允许明文存储，必须使用哈希。
+3. 涉及删除时，默认优先考虑软删除，除非明确要求物理删除。
+4. 新增和编辑功能优先复用同一套表单组件。
+5. 任何环境变量、密钥、账号密码都不得写入仓库跟踪文件。
+
+## 文档约定
+
+1. 长期稳定的协作规则放在 `AGENTS.md`。
+2. 会变化的产品需求与实施方案放在 `docs/plans`。
+3. 启动、部署、环境变量说明放在 `README.md`。
