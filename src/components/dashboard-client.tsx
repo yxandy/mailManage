@@ -40,6 +40,25 @@ function formatDate(value?: string | null, includeTime = false) {
   }).format(date);
 }
 
+function formatDateOnly(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "UTC",
+  }).format(date);
+}
+
 export function DashboardClient({
   username,
   items,
@@ -245,7 +264,7 @@ export function DashboardClient({
                           {formatDate(item.birthday)}
                         </td>
                         <td className="border-b border-[var(--border)] px-4 py-4">
-                          {formatDate(item.registered_at, true)}
+                          {formatDateOnly(item.registered_at)}
                         </td>
                         <td className="border-b border-[var(--border)] px-4 py-4">
                           {item.registered_location}
@@ -254,13 +273,13 @@ export function DashboardClient({
                           {item.is_linked_s2a ? "是" : "否"}
                         </td>
                         <td className="border-b border-[var(--border)] px-4 py-4">
-                          {formatDate(item.linked_at, true)}
+                          {formatDateOnly(item.linked_at)}
                         </td>
                         <td className="border-b border-[var(--border)] px-4 py-4">
                           {item.is_expired ? "是" : "否"}
                         </td>
                         <td className="border-b border-[var(--border)] px-4 py-4">
-                          {formatDate(item.expired_at, true)}
+                          {formatDateOnly(item.expired_at)}
                         </td>
                         <td className="border-b border-[var(--border)] px-4 py-4">
                           <div className="flex flex-wrap gap-2">

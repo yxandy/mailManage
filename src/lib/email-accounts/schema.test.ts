@@ -21,6 +21,43 @@ test("账号名称和预设域名会合并成 email_name", () => {
   assert.equal(result.email_name, "test@gmail.com");
 });
 
+test("注册时间和关联时间按纯日期保存，避免时区偏移", () => {
+  const result = normalizeEmailAccountInput({
+    email_account_name: "test",
+    email_domain: "gmail.com",
+    custom_email_domain: "",
+    user_name: "",
+    birthday: "",
+    registered_at: "2026-04-06",
+    registered_location: "",
+    is_linked_s2a: true,
+    linked_at: "2026-04-07",
+    is_expired: false,
+    expired_at: "",
+  });
+
+  assert.equal(result.registered_at, "2026-04-06T00:00:00.000Z");
+  assert.equal(result.linked_at, "2026-04-07T00:00:00.000Z");
+});
+
+test("失效时间也按纯日期保存，避免时区偏移", () => {
+  const result = normalizeEmailAccountInput({
+    email_account_name: "test",
+    email_domain: "gmail.com",
+    custom_email_domain: "",
+    user_name: "",
+    birthday: "",
+    registered_at: "",
+    registered_location: "",
+    is_linked_s2a: false,
+    linked_at: "",
+    is_expired: true,
+    expired_at: "2026-04-08",
+  });
+
+  assert.equal(result.expired_at, "2026-04-08T00:00:00.000Z");
+});
+
 test("选择自定义域名时会合并自定义域名", () => {
   const result = normalizeEmailAccountInput({
     email_account_name: "test",
@@ -94,7 +131,7 @@ test("未关联 s2a 时会清空关联时间", () => {
     registered_at: "",
     registered_location: "",
     is_linked_s2a: false,
-    linked_at: "2026-04-06T12:00",
+    linked_at: "2026-04-06",
     is_expired: false,
     expired_at: "",
   });
@@ -114,7 +151,7 @@ test("未失效时会清空失效时间", () => {
     is_linked_s2a: true,
     linked_at: "",
     is_expired: false,
-    expired_at: "2026-04-07T12:00",
+    expired_at: "2026-04-07",
   });
 
   assert.equal(result.expired_at, null);

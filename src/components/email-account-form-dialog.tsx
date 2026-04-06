@@ -31,7 +31,7 @@ type FormState = {
   expired_at: string;
 };
 
-function toDatetimeLocalValue(value?: string | null): string {
+function toDateInputValue(value?: string | null): string {
   if (!value) {
     return "";
   }
@@ -42,10 +42,7 @@ function toDatetimeLocalValue(value?: string | null): string {
     return "";
   }
 
-  const offset = date.getTimezoneOffset();
-  const localDate = new Date(date.getTime() - offset * 60_000);
-
-  return localDate.toISOString().slice(0, 16);
+  return date.toISOString().slice(0, 10);
 }
 
 function createInitialState(record?: EmailAccountRecord | null): FormState {
@@ -57,12 +54,12 @@ function createInitialState(record?: EmailAccountRecord | null): FormState {
     custom_email_domain: emailNameParts.customEmailDomain,
     user_name: record?.user_name ?? "",
     birthday: record?.birthday ?? "",
-    registered_at: toDatetimeLocalValue(record?.registered_at),
+    registered_at: toDateInputValue(record?.registered_at),
     registered_location: record?.registered_location ?? "",
     is_linked_s2a: record?.is_linked_s2a ?? false,
-    linked_at: toDatetimeLocalValue(record?.linked_at),
+    linked_at: toDateInputValue(record?.linked_at),
     is_expired: record?.is_expired ?? false,
-    expired_at: toDatetimeLocalValue(record?.expired_at),
+    expired_at: toDateInputValue(record?.expired_at),
   };
 }
 
@@ -238,7 +235,7 @@ export function EmailAccountFormDialog({
             <label className="grid gap-2 text-sm">
               <span className="text-[var(--muted)]">注册时间</span>
               <input
-                type="datetime-local"
+                type="date"
                 className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
                 value={formState.registered_at}
                 onChange={(event) =>
@@ -266,7 +263,7 @@ export function EmailAccountFormDialog({
             <label className="grid gap-2 text-sm">
               <span className="text-[var(--muted)]">关联时间</span>
               <input
-                type="datetime-local"
+                type="date"
                 className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 disabled:bg-stone-100"
                 value={formState.linked_at}
                 onChange={(event) =>
@@ -293,7 +290,7 @@ export function EmailAccountFormDialog({
             <label className="grid gap-2 text-sm">
               <span className="text-[var(--muted)]">失效时间</span>
               <input
-                type="datetime-local"
+                type="date"
                 className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 disabled:bg-stone-100"
                 value={formState.expired_at}
                 onChange={(event) =>
