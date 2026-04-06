@@ -38,9 +38,10 @@ export function Pagination({
             <a
               key={page}
               href={buildHref(page, searchParams)}
-              className={`min-w-10 rounded-xl border px-3 py-2 text-sm transition ${
+              aria-current={isActive ? "page" : undefined}
+              className={`inline-flex min-w-10 items-center justify-center rounded-xl border px-3 py-2 text-center text-sm leading-none transition ${
                 isActive
-                  ? "border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]"
+                  ? "border-[var(--primary)] bg-[var(--primary)] !text-[var(--primary-foreground)]"
                   : "border-[var(--border)] bg-white text-[var(--foreground)] hover:border-[var(--primary)]"
               }`}
             >
