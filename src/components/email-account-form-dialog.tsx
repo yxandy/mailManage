@@ -3,7 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { EmailAccountRecord } from "@/lib/email-accounts/schema";
+import {
+  PRESET_EMAIL_DOMAINS,
+  splitEmailName,
+  type EmailAccountRecord,
+  type EmailDomainOption,
+} from "@/lib/email-accounts/schema";
 
 type EmailAccountFormDialogProps = {
   mode: "create" | "edit";
@@ -13,7 +18,9 @@ type EmailAccountFormDialogProps = {
 };
 
 type FormState = {
-  email_name: string;
+  email_account_name: string;
+  email_domain: EmailDomainOption;
+  custom_email_domain: string;
   user_name: string;
   birthday: string;
   registered_at: string;
@@ -42,8 +49,12 @@ function toDatetimeLocalValue(value?: string | null): string {
 }
 
 function createInitialState(record?: EmailAccountRecord | null): FormState {
+  const emailNameParts = splitEmailName(record?.email_name ?? "");
+
   return {
-    email_name: record?.email_name ?? "",
+    email_account_name: emailNameParts.emailAccountName,
+    email_domain: emailNameParts.emailDomain,
+    custom_email_domain: emailNameParts.customEmailDomain,
     user_name: record?.user_name ?? "",
     birthday: record?.birthday ?? "",
     registered_at: toDatetimeLocalValue(record?.registered_at),
@@ -133,17 +144,63 @@ export function EmailAccountFormDialog({
 
         <form className="grid gap-5" onSubmit={handleSubmit}>
           <div className="grid gap-5 md:grid-cols-2">
-            <label className="grid gap-2 text-sm">
-              <span className="text-[var(--muted)]">邮箱账号名称</span>
-              <input
-                className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-                value={formState.email_name}
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, email_name: event.target.value }))
-                }
-                required
-              />
-            </label>
+            <div className="grid gap-4 md:col-span-2 md:grid-cols-[1.2fr_0.8fr_1fr]">
+              <label className="grid gap-2 text-sm">
+                <span className="text-[var(--muted)]">账号名称</span>
+                <input
+                  className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                  value={formState.email_account_name}
+                  onChange={(event) =>
+                    setFormState((current) => ({
+                      ...current,
+                      email_account_name: event.target.value,
+                    }))
+                  }
+                  required
+                />
+              </label>
+              <label className="grid gap-2 text-sm">
+                <span className="text-[var(--muted)]">邮箱域名</span>
+                <select
+                  className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                  value={formState.email_domain}
+                  onChange={(event) =>
+                    setFormState((current) => ({
+                      ...current,
+                      email_domain: event.target.value as EmailDomainOption,
+                      custom_email_domain:
+                        event.target.value === "custom" ? current.custom_email_domain : "",
+                    }))
+                  }
+                >
+                  {PRESET_EMAIL_DOMAINS.map((domain) => (
+                    <option key={domain} value={domain}>
+                      {domain}
+                    </option>
+                  ))}
+                  <option value="custom">自定义</option>
+                </select>
+              </label>
+              {formState.email_domain === "custom" ? (
+                <label className="grid gap-2 text-sm">
+                  <span className="text-[var(--muted)]">自定义域名</span>
+                  <input
+                    className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                    value={formState.custom_email_domain}
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        custom_email_domain: event.target.value,
+                      }))
+                    }
+                    placeholder="例如 example.com"
+                    required
+                  />
+                </label>
+              ) : (
+                <div className="hidden md:block" />
+              )}
+            </div>
             <label className="grid gap-2 text-sm">
               <span className="text-[var(--muted)]">用户姓名</span>
               <input
@@ -151,6 +208,20 @@ export function EmailAccountFormDialog({
                 value={formState.user_name}
                 onChange={(event) =>
                   setFormState((current) => ({ ...current, user_name: event.target.value }))
+                }
+                required
+              />
+            </label>
+            <label className="grid gap-2 text-sm">
+              <span className="text-[var(--muted)]">注册地点</span>
+              <input
+                className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                value={formState.registered_location}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    registered_location: event.target.value,
+                  }))
                 }
                 required
               />
@@ -174,20 +245,6 @@ export function EmailAccountFormDialog({
                 value={formState.registered_at}
                 onChange={(event) =>
                   setFormState((current) => ({ ...current, registered_at: event.target.value }))
-                }
-                required
-              />
-            </label>
-            <label className="grid gap-2 text-sm md:col-span-2">
-              <span className="text-[var(--muted)]">注册地点</span>
-              <input
-                className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-                value={formState.registered_location}
-                onChange={(event) =>
-                  setFormState((current) => ({
-                    ...current,
-                    registered_location: event.target.value,
-                  }))
                 }
                 required
               />

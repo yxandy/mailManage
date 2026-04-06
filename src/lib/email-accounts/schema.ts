@@ -1,5 +1,8 @@
 export type EmailAccountFormInput = {
-  email_name: string;
+  email_name?: string;
+  email_account_name?: string;
+  email_domain?: string;
+  custom_email_domain?: string;
   user_name: string;
   birthday?: string | null;
   registered_at: string;
@@ -21,6 +24,15 @@ export type EmailAccountWriteInput = {
   is_expired: boolean;
   expired_at: string | null;
 };
+
+export const PRESET_EMAIL_DOMAINS = [
+  "hotmail.com",
+  "gmail.com",
+  "qq.com",
+  "126.com",
+] as const;
+
+export type EmailDomainOption = (typeof PRESET_EMAIL_DOMAINS)[number] | "custom";
 
 function toBoolean(value: boolean | string): boolean {
   if (typeof value === "boolean") {
@@ -56,16 +68,89 @@ function normalizeDateTime(value: string, fieldName: string): string {
   return parsedDate.toISOString();
 }
 
+function normalizeEmailName(
+  emailAccountNameValue: string | null | undefined,
+  emailDomainValue: string | null | undefined,
+  customEmailDomainValue: string | null | undefined,
+  fallbackEmailNameValue: string | null | undefined,
+): string {
+  const fallbackEmailName = normalizeText(fallbackEmailNameValue);
+
+  if (
+    emailAccountNameValue === undefined &&
+    emailDomainValue === undefined &&
+    customEmailDomainValue === undefined
+  ) {
+    if (!fallbackEmailName) {
+      throw new Error("邮箱账号名称不能为空");
+    }
+
+    return fallbackEmailName;
+  }
+
+  const emailAccountName = normalizeText(emailAccountNameValue);
+  const emailDomain = normalizeText(emailDomainValue);
+  const customEmailDomain = normalizeText(customEmailDomainValue);
+
+  if (!emailAccountName) {
+    throw new Error("账号名称不能为空");
+  }
+
+  if (!emailDomain) {
+    throw new Error("邮箱域名不能为空");
+  }
+
+  const finalDomain = emailDomain === "custom" ? customEmailDomain : emailDomain;
+
+  if (!finalDomain) {
+    throw new Error("自定义邮箱域名不能为空");
+  }
+
+  return `${emailAccountName}@${finalDomain}`;
+}
+
+export function splitEmailName(emailName: string): {
+  emailAccountName: string;
+  emailDomain: EmailDomainOption;
+  customEmailDomain: string;
+} {
+  const normalized = normalizeText(emailName);
+  const [localPart = normalized, domain = ""] = normalized.split("@");
+
+  if (!domain) {
+    return {
+      emailAccountName: normalized,
+      emailDomain: "custom",
+      customEmailDomain: "",
+    };
+  }
+
+  if (PRESET_EMAIL_DOMAINS.includes(domain as (typeof PRESET_EMAIL_DOMAINS)[number])) {
+    return {
+      emailAccountName: localPart,
+      emailDomain: domain as EmailDomainOption,
+      customEmailDomain: "",
+    };
+  }
+
+  return {
+    emailAccountName: localPart,
+    emailDomain: "custom",
+    customEmailDomain: domain,
+  };
+}
+
 export function normalizeEmailAccountInput(
   input: EmailAccountFormInput,
 ): EmailAccountWriteInput {
-  const emailName = normalizeText(input.email_name);
+  const emailName = normalizeEmailName(
+    input.email_account_name,
+    input.email_domain,
+    input.custom_email_domain,
+    input.email_name,
+  );
   const userName = normalizeText(input.user_name);
   const registeredLocation = normalizeText(input.registered_location);
-
-  if (!emailName) {
-    throw new Error("邮箱账号名称不能为空");
-  }
 
   if (!userName) {
     throw new Error("用户姓名不能为空");
