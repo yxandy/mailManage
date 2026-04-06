@@ -27,6 +27,7 @@ export type EmailAccountWriteInput = {
 
 export const PRESET_EMAIL_DOMAINS = [
   "hotmail.com",
+  "outlook.com",
   "gmail.com",
   "qq.com",
   "126.com",
