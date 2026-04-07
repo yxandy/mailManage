@@ -134,9 +134,7 @@ export function DashboardClient({
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-[var(--muted)]">已关联</p>
-                      <p className="mt-1 text-2xl font-semibold">
-                        {Math.max(total - stats.unlinkedCount, 0)}
-                      </p>
+                      <p className="mt-1 text-2xl font-semibold">{stats.linkedCount}</p>
                     </div>
                   </div>
                   <p className="mt-2 text-sm text-[var(--muted)]">有效邮箱数量分布</p>
