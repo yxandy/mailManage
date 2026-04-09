@@ -21,7 +21,7 @@ export async function getEmailAccountDashboardStats(): Promise<EmailAccountDashb
   const { data, error } = await supabase
     .from("email_accounts")
     .select(
-      "id, email_name, user_name, birthday, registered_at, registered_location, is_linked_s2a, linked_at, is_expired, expired_at, deleted_at, created_at, updated_at",
+      "id, email_name, user_name, birthday, registered_at, registered_location, is_registered_cg, cg_registered_at, is_linked_s2a, linked_at, is_expired, expired_at, deleted_at, created_at, updated_at",
     )
     .is("deleted_at", null);
 

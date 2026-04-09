@@ -25,6 +25,8 @@ type FormState = {
   birthday: string;
   registered_at: string;
   registered_location: string;
+  is_registered_cg: boolean;
+  cg_registered_at: string;
   is_linked_s2a: boolean;
   linked_at: string;
   is_expired: boolean;
@@ -56,6 +58,8 @@ function createInitialState(record?: EmailAccountRecord | null): FormState {
     birthday: record?.birthday ?? "",
     registered_at: toDateInputValue(record?.registered_at),
     registered_location: record?.registered_location ?? "",
+    is_registered_cg: record?.is_registered_cg ?? false,
+    cg_registered_at: toDateInputValue(record?.cg_registered_at),
     is_linked_s2a: record?.is_linked_s2a ?? false,
     linked_at: toDateInputValue(record?.linked_at),
     is_expired: record?.is_expired ?? false,
@@ -246,6 +250,36 @@ export function EmailAccountFormDialog({
           </div>
 
           <div className="grid gap-5 rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] p-5 md:grid-cols-2">
+            <label className="flex items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={formState.is_registered_cg}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    is_registered_cg: event.target.checked,
+                    cg_registered_at: event.target.checked ? current.cg_registered_at : "",
+                  }))
+                }
+              />
+              <span>已注册 cg</span>
+            </label>
+            <label className="grid gap-2 text-sm">
+              <span className="text-[var(--muted)]">cg 注册时间</span>
+              <input
+                type="date"
+                className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 disabled:bg-stone-100"
+                value={formState.cg_registered_at}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    cg_registered_at: event.target.value,
+                  }))
+                }
+                disabled={!formState.is_registered_cg}
+                required={formState.is_registered_cg}
+              />
+            </label>
             <label className="flex items-center gap-3 text-sm">
               <input
                 type="checkbox"

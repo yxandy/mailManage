@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import type { EmailAccountRecord } from "@/lib/email-accounts/schema";
 import type { EmailAccountDashboardStats } from "@/lib/email-accounts/stats";
+import { getEmailNameColorClass } from "@/lib/email-accounts/status";
 
 import { EmailAccountFormDialog } from "./email-account-form-dialog";
 import { Pagination } from "./pagination";
@@ -263,7 +264,9 @@ export function DashboardClient({
                   {items.length > 0 ? (
                     items.map((item) => (
                       <tr key={item.id} className="text-sm transition hover:bg-white/70">
-                        <td className="border-b border-[var(--border)] px-4 py-4 font-medium">
+                        <td
+                          className={`border-b border-[var(--border)] px-4 py-4 font-medium ${getEmailNameColorClass(item)}`}
+                        >
                           {item.email_name}
                         </td>
                         <td className="border-b border-[var(--border)] px-4 py-4">

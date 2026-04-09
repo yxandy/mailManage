@@ -7,6 +7,8 @@ export type EmailAccountFormInput = {
   birthday?: string | null;
   registered_at: string;
   registered_location: string;
+  is_registered_cg?: boolean | string;
+  cg_registered_at?: string | null;
   is_linked_s2a: boolean | string;
   linked_at?: string | null;
   is_expired: boolean | string;
@@ -19,6 +21,8 @@ export type EmailAccountWriteInput = {
   birthday: string | null;
   registered_at: string | null;
   registered_location: string | null;
+  is_registered_cg: boolean;
+  cg_registered_at: string | null;
   is_linked_s2a: boolean;
   linked_at: string | null;
   is_expired: boolean;
@@ -157,6 +161,7 @@ export function normalizeEmailAccountInput(
     input.email_name,
   );
   const isLinkedS2A = toBoolean(input.is_linked_s2a);
+  const isRegisteredCg = toBoolean(input.is_registered_cg ?? false);
   const isExpired = toBoolean(input.is_expired);
 
   return {
@@ -165,6 +170,8 @@ export function normalizeEmailAccountInput(
     birthday: normalizeOptionalDate(input.birthday),
     registered_at: normalizeOptionalDateTime(input.registered_at),
     registered_location: normalizeOptionalText(input.registered_location),
+    is_registered_cg: isRegisteredCg,
+    cg_registered_at: isRegisteredCg ? normalizeOptionalDateTime(input.cg_registered_at) : null,
     is_linked_s2a: isLinkedS2A,
     linked_at: isLinkedS2A ? normalizeOptionalDateTime(input.linked_at) : null,
     is_expired: isExpired,

@@ -15,6 +15,8 @@ create table if not exists public.email_accounts (
   birthday date,
   registered_at timestamptz,
   registered_location text,
+  is_registered_cg boolean not null default false,
+  cg_registered_at timestamptz,
   is_linked_s2a boolean not null default false,
   linked_at timestamptz,
   is_expired boolean not null default false,
@@ -25,6 +27,10 @@ create table if not exists public.email_accounts (
   constraint email_accounts_linked_at_check check (
     (is_linked_s2a = false and linked_at is null)
     or (is_linked_s2a = true)
+  ),
+  constraint email_accounts_cg_registered_at_check check (
+    (is_registered_cg = false and cg_registered_at is null)
+    or (is_registered_cg = true)
   ),
   constraint email_accounts_expired_at_check check (
     (is_expired = false and expired_at is null)
