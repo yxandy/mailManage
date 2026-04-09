@@ -10,8 +10,13 @@
   --primary-foreground: #f7f4ed;
   --muted: #6d736d;
   --danger: #9d3c32;
-  --accent-warning: #b16b1e;
-  --accent-warning-strong: #9a8600;
+  --accent-warning: #d97706;
+  --accent-warning-strong: #ca8a04;
+  --email-status-default: var(--foreground);
+  --email-status-registered: #f08c00;
+  --email-status-registered-cg: #d4b000;
+  --email-status-linked: #16a34a;
+  --email-status-expired: #e03131;
   --shadow: 0 18px 48px rgba(28, 45, 38, 0.08);
   --font-sans:
     "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC",

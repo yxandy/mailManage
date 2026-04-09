@@ -35,7 +35,7 @@ test("已失效邮箱显示红色", () => {
         linked_at: "2026-04-08T00:00:00.000Z",
       }),
     ),
-    "text-[var(--danger)]",
+    "text-[var(--email-status-expired)]",
   );
 });
 
@@ -47,7 +47,7 @@ test("未失效且已关联 s2a 的邮箱显示绿色", () => {
         linked_at: "2026-04-08T00:00:00.000Z",
       }),
     ),
-    "text-[var(--primary)]",
+    "text-[var(--email-status-linked)]",
   );
 });
 
@@ -60,7 +60,7 @@ test("普通注册时间和 cg 注册时间同时存在时显示黄色", () => {
         cg_registered_at: "2026-04-07T00:00:00.000Z",
       }),
     ),
-    "text-[var(--accent-warning-strong)]",
+    "text-[var(--email-status-registered-cg)]",
   );
 });
 
@@ -71,10 +71,10 @@ test("只有普通注册时间时显示橙色", () => {
         registered_at: "2026-04-06T00:00:00.000Z",
       }),
     ),
-    "text-[var(--accent-warning)]",
+    "text-[var(--email-status-registered)]",
   );
 });
 
 test("没有注册时间且未关联未失效时保留默认颜色", () => {
-  assert.equal(getEmailNameColorClass(createRecord()), "text-[var(--foreground)]");
+  assert.equal(getEmailNameColorClass(createRecord()), "text-[var(--email-status-default)]");
 });
