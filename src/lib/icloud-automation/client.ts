@@ -14,6 +14,16 @@ const DEFAULT_USER_DATA_DIR = path.resolve(process.cwd(), ".local/icloud-playwri
 const ICLOUD_HOME_URL = "https://www.icloud.com/";
 const ICLOUD_PLUS_URL = "https://www.icloud.com/icloudplus/";
 
+function assertSupportedRuntime() {
+  // iCloud 自动化依赖本机可交互浏览器会话，云端部署环境不适合执行
+  if (process.env.VERCEL === "1") {
+    throw new IcloudAutomationError(
+      "ENV_MISCONFIGURED",
+      "当前为 Vercel 云端环境，iCloud 自动化仅支持本机运行。请在本地启动项目后使用该功能。",
+    );
+  }
+}
+
 function parseBooleanEnv(value: string | undefined, fallback: boolean): boolean {
   if (!value) {
     return fallback;
@@ -166,6 +176,8 @@ function mapUnknownError(error: unknown): IcloudAutomationError {
 }
 
 async function launchPersistentContext(): Promise<BrowserContext> {
+  assertSupportedRuntime();
+
   let chromium: BrowserType;
 
   try {
@@ -180,7 +192,16 @@ async function launchPersistentContext(): Promise<BrowserContext> {
   }
 
   const userDataDir = resolveUserDataDir();
-  mkdirSync(userDataDir, { recursive: true });
+  try {
+    mkdirSync(userDataDir, { recursive: true });
+  } catch (error) {
+    throw new IcloudAutomationError(
+      "ENV_MISCONFIGURED",
+      error instanceof Error
+        ? `无法创建本地会话目录：${error.message}`
+        : "无法创建本地会话目录，请检查运行环境目录权限",
+    );
+  }
 
   const headless = parseBooleanEnv(process.env.ICLOUD_PLAYWRIGHT_HEADLESS, false);
 
