@@ -1,36 +1,11 @@
 import { mkdirSync } from "node:fs";
 import path from "node:path";
+import type { BrowserContext, BrowserType, Page } from "playwright";
 
 import { ICLOUD_SELECTORS } from "./selectors.ts";
 import { ensureIcloudSession } from "./session.ts";
 import { IcloudAutomationError } from "./types.ts";
 import type { CreateHideMyEmailResult, IcloudAutomationClient } from "./types.ts";
-
-type PlaywrightPage = {
-  goto: (url: string, options?: { waitUntil?: "domcontentloaded" | "load"; timeout?: number }) => Promise<void>;
-  url: () => string;
-  waitForTimeout: (timeout: number) => Promise<void>;
-  locator: (selector: string) => {
-    first: () => {
-      waitFor: (options?: { state?: "visible"; timeout?: number }) => Promise<void>;
-      click: () => Promise<void>;
-      innerText: (options?: { timeout?: number }) => Promise<string>;
-    };
-    innerText: (options?: { timeout?: number }) => Promise<string>;
-  };
-  getByRole: (role: "button" | "link", options: { name: RegExp }) => {
-    first: () => {
-      waitFor: (options?: { state?: "visible"; timeout?: number }) => Promise<void>;
-      click: () => Promise<void>;
-    };
-  };
-};
-
-type PlaywrightContext = {
-  pages: () => PlaywrightPage[];
-  newPage: () => Promise<PlaywrightPage>;
-  close: () => Promise<void>;
-};
 
 const DEFAULT_GOTO_TIMEOUT_MS = 60_000;
 const DEFAULT_CREATE_WAIT_MS = 2_000;
@@ -81,7 +56,7 @@ function extractEmailFromText(text: string): string | null {
   return matched?.[0]?.toLowerCase() ?? null;
 }
 
-async function clickFirstVisibleBySelectors(page: PlaywrightPage, selectors: readonly string[]) {
+async function clickFirstVisibleBySelectors(page: Page, selectors: readonly string[]) {
   for (const selector of selectors) {
     const target = page.locator(selector).first();
 
@@ -98,7 +73,7 @@ async function clickFirstVisibleBySelectors(page: PlaywrightPage, selectors: rea
 }
 
 async function clickByRoleName(
-  page: PlaywrightPage,
+  page: Page,
   role: "button" | "link",
   namePattern: RegExp,
 ): Promise<boolean> {
@@ -113,7 +88,7 @@ async function clickByRoleName(
   }
 }
 
-async function openHideMyEmailPage(page: PlaywrightPage) {
+async function openHideMyEmailPage(page: Page) {
   await page.goto(ICLOUD_PLUS_URL, {
     waitUntil: "domcontentloaded",
     timeout: DEFAULT_GOTO_TIMEOUT_MS,
@@ -132,7 +107,7 @@ async function openHideMyEmailPage(page: PlaywrightPage) {
   }
 }
 
-async function createHideMyEmailAddress(page: PlaywrightPage) {
+async function createHideMyEmailAddress(page: Page) {
   const clickedBySelector = await clickFirstVisibleBySelectors(page, ICLOUD_SELECTORS.createButton);
   if (clickedBySelector) {
     await page.waitForTimeout(DEFAULT_CREATE_WAIT_MS);
@@ -150,7 +125,7 @@ async function createHideMyEmailAddress(page: PlaywrightPage) {
   await page.waitForTimeout(DEFAULT_CREATE_WAIT_MS);
 }
 
-async function readLatestHideMyEmailAddress(page: PlaywrightPage): Promise<string> {
+async function readLatestHideMyEmailAddress(page: Page): Promise<string> {
   for (const selector of ICLOUD_SELECTORS.latestEmailText) {
     try {
       const text = await page.locator(selector).first().innerText({ timeout: 3000 });
@@ -190,13 +165,8 @@ function mapUnknownError(error: unknown): IcloudAutomationError {
   return new IcloudAutomationError("CREATE_FAILED", "创建 iCloud 隐藏邮箱失败");
 }
 
-async function launchPersistentContext(): Promise<PlaywrightContext> {
-  let chromium: {
-    launchPersistentContext: (
-      userDataDir: string,
-      options: { headless: boolean; viewport: { width: number; height: number } },
-    ) => Promise<PlaywrightContext>;
-  };
+async function launchPersistentContext(): Promise<BrowserContext> {
+  let chromium: BrowserType;
 
   try {
     ({ chromium } = await import("playwright"));
