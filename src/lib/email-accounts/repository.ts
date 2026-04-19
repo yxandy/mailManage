@@ -89,25 +89,6 @@ export async function createEmailAccount(input: EmailAccountWriteInput) {
   }
 }
 
-export async function createEmailAccountAndReturnId(input: EmailAccountWriteInput): Promise<string> {
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
-    .from("email_accounts")
-    .insert(input)
-    .select("id")
-    .single();
-
-  if (error) {
-    throw new Error(`新增邮箱账号失败：${error.message}`);
-  }
-
-  if (!data?.id) {
-    throw new Error("新增邮箱账号失败：未返回记录 ID");
-  }
-
-  return data.id;
-}
-
 export async function updateEmailAccount(id: string, input: EmailAccountWriteInput) {
   const supabase = createSupabaseServerClient();
   const { error } = await supabase.from("email_accounts").update(input).eq("id", id);

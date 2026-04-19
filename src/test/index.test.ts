@@ -5,5 +5,3 @@ import "../lib/email-accounts/schema.test.ts";
 import "../lib/email-accounts/sort.test.ts";
 import "../lib/email-accounts/status.test.ts";
 import "../lib/email-accounts/stats.test.ts";
-import "../lib/icloud-automation/api.test.ts";
-import "../lib/icloud-automation/service.test.ts";
