@@ -21,7 +21,7 @@ export async function getEmailAccountDashboardStats(): Promise<EmailAccountDashb
   const { data, error } = await supabase
     .from("email_accounts")
     .select(
-      "id, email_name, user_name, birthday, registered_at, registered_location, is_registered_cg, cg_registered_at, is_linked_s2a, linked_at, is_expired, expired_at, deleted_at, created_at, updated_at",
+      "id, email_name, source, user_name, birthday, registered_at, registered_location, is_registered_cg, cg_registered_at, is_linked_s2a, linked_at, is_expired, expired_at, deleted_at, created_at, updated_at",
     )
     .is("deleted_at", null);
 
@@ -87,6 +87,25 @@ export async function createEmailAccount(input: EmailAccountWriteInput) {
   if (error) {
     throw new Error(`新增邮箱账号失败：${error.message}`);
   }
+}
+
+export async function createEmailAccountAndReturnId(input: EmailAccountWriteInput): Promise<string> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("email_accounts")
+    .insert(input)
+    .select("id")
+    .single();
+
+  if (error) {
+    throw new Error(`新增邮箱账号失败：${error.message}`);
+  }
+
+  if (!data?.id) {
+    throw new Error("新增邮箱账号失败：未返回记录 ID");
+  }
+
+  return data.id;
 }
 
 export async function updateEmailAccount(id: string, input: EmailAccountWriteInput) {

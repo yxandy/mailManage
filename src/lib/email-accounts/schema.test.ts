@@ -199,6 +199,43 @@ test("未失效时会清空失效时间", () => {
   assert.equal(result.expired_at, null);
 });
 
+test("未传来源时默认写入 manual", () => {
+  const result = normalizeEmailAccountInput({
+    email_account_name: "test",
+    email_domain: "gmail.com",
+    custom_email_domain: "",
+    user_name: "",
+    birthday: "",
+    registered_at: "",
+    registered_location: "",
+    is_linked_s2a: false,
+    linked_at: "",
+    is_expired: false,
+    expired_at: "",
+  });
+
+  assert.equal(result.source, "manual");
+});
+
+test("传入来源时按输入写入", () => {
+  const result = normalizeEmailAccountInput({
+    email_account_name: "test",
+    email_domain: "gmail.com",
+    custom_email_domain: "",
+    source: "icloud_hide_my_email",
+    user_name: "",
+    birthday: "",
+    registered_at: "",
+    registered_location: "",
+    is_linked_s2a: false,
+    linked_at: "",
+    is_expired: false,
+    expired_at: "",
+  });
+
+  assert.equal(result.source, "icloud_hide_my_email");
+});
+
 test("缺少邮箱账号名称时抛出错误", () => {
   assert.throws(() =>
     normalizeEmailAccountInput({

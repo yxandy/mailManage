@@ -73,6 +73,51 @@ export function DashboardClient({
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingRecord, setEditingRecord] = useState<EmailAccountRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isCreatingIcloudHideEmail, setIsCreatingIcloudHideEmail] = useState(false);
+  const [icloudHideEmailSuccessMessage, setIcloudHideEmailSuccessMessage] = useState("");
+  const [icloudHideEmailErrorMessage, setIcloudHideEmailErrorMessage] = useState("");
+
+  async function handleCreateIcloudHideEmail() {
+    const confirmed = window.confirm(
+      "将使用本机 Apple 登录态创建 1 个 iCloud 隐藏邮箱；如登录失效，需要你手动完成登录和双重验证。确认继续吗？",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsCreatingIcloudHideEmail(true);
+    setIcloudHideEmailSuccessMessage("");
+    setIcloudHideEmailErrorMessage("");
+
+    try {
+      const response = await fetch("/api/icloud-hide-email/create", {
+        method: "POST",
+      });
+      const result = (await response.json()) as {
+        success?: boolean;
+        email?: string;
+        requiresInteraction?: boolean;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "创建 iCloud 隐藏邮箱失败");
+      }
+
+      const interactionHint = result.requiresInteraction
+        ? "（本次包含人工登录或双重验证）"
+        : "";
+      setIcloudHideEmailSuccessMessage(`已创建并入库：${result.email ?? "-"} ${interactionHint}`.trim());
+      router.refresh();
+    } catch (error) {
+      setIcloudHideEmailErrorMessage(
+        error instanceof Error ? error.message : "创建 iCloud 隐藏邮箱失败",
+      );
+    } finally {
+      setIsCreatingIcloudHideEmail(false);
+    }
+  }
 
   async function handleDelete(id: string) {
     const confirmed = window.confirm("确认删除这条邮箱账号记录吗？该操作会执行软删除。");
@@ -176,6 +221,14 @@ export function DashboardClient({
                 </button>
                 <button
                   type="button"
+                  className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-70"
+                  onClick={handleCreateIcloudHideEmail}
+                  disabled={isCreatingIcloudHideEmail}
+                >
+                  {isCreatingIcloudHideEmail ? "创建中..." : "创建 iCloud 隐藏邮箱"}
+                </button>
+                <button
+                  type="button"
                   className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm"
                   onClick={handleLogout}
                 >
@@ -183,6 +236,16 @@ export function DashboardClient({
                 </button>
               </div>
             </div>
+            {icloudHideEmailSuccessMessage ? (
+              <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                {icloudHideEmailSuccessMessage}
+              </p>
+            ) : null}
+            {icloudHideEmailErrorMessage ? (
+              <p className="mt-4 rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
+                {icloudHideEmailErrorMessage}
+              </p>
+            ) : null}
           </section>
 
           <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">

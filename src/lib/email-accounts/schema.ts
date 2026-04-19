@@ -1,4 +1,5 @@
 export type EmailAccountFormInput = {
+  source?: string | null;
   email_name?: string;
   email_account_name?: string;
   email_domain?: string;
@@ -17,6 +18,7 @@ export type EmailAccountFormInput = {
 
 export type EmailAccountWriteInput = {
   email_name: string;
+  source: string | null;
   user_name: string | null;
   birthday: string | null;
   registered_at: string | null;
@@ -166,6 +168,7 @@ export function normalizeEmailAccountInput(
 
   return {
     email_name: emailName,
+    source: normalizeOptionalText(input.source) ?? "manual",
     user_name: normalizeOptionalText(input.user_name),
     birthday: normalizeOptionalDate(input.birthday),
     registered_at: normalizeOptionalDateTime(input.registered_at),

@@ -36,6 +36,7 @@
 
 - `id`：主键
 - `email_name`：邮箱账号名称
+- `source`：来源，可空（如 `manual`、`icloud_hide_my_email`）
 - `user_name`：用户姓名，可空
 - `birthday`：用户生日
 - `registered_at`：注册时间，可空
@@ -56,6 +57,7 @@
 - `birthday` 使用日期类型。
 - `registered_at`、`linked_at`、`expired_at` 使用时间戳类型。
 - 当前仅 `email_name` 为必填字段，其他业务字段允许为空。
+- `source` 当前允许为空，用于兼容历史数据。
 
 ## 索引建议
 

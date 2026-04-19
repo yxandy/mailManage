@@ -11,6 +11,7 @@ create table if not exists public.admin_users (
 create table if not exists public.email_accounts (
   id uuid primary key default gen_random_uuid(),
   email_name text not null,
+  source text,
   user_name text,
   birthday date,
   registered_at timestamptz,

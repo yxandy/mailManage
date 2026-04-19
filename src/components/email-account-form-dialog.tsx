@@ -18,6 +18,7 @@ type EmailAccountFormDialogProps = {
 };
 
 type FormState = {
+  source: string;
   email_account_name: string;
   email_domain: EmailDomainOption;
   custom_email_domain: string;
@@ -51,6 +52,7 @@ function createInitialState(record?: EmailAccountRecord | null): FormState {
   const emailNameParts = splitEmailName(record?.email_name ?? "");
 
   return {
+    source: record?.source ?? "manual",
     email_account_name: emailNameParts.emailAccountName,
     email_domain: emailNameParts.emailDomain,
     custom_email_domain: emailNameParts.customEmailDomain,

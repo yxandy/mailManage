@@ -50,6 +50,28 @@ npm run dev
 
 4. 浏览器访问 `http://localhost:3000`
 
+## iCloud 隐藏邮箱自动化（本机）
+
+该能力依赖本机浏览器自动化，仅建议在管理员自己的设备上使用。
+
+1. 安装 Playwright 浏览器内核（首次）
+
+```bash
+npx playwright install chromium
+```
+
+2. 可选环境变量
+
+- `ICLOUD_PLAYWRIGHT_HEADLESS`：是否无头模式，默认 `false`
+- `ICLOUD_PLAYWRIGHT_USER_DATA_DIR`：Playwright 持久化会话目录，默认 `.local/icloud-playwright`
+- `ICLOUD_MANUAL_LOGIN_TIMEOUT_MS`：人工登录等待超时（毫秒），默认 `180000`
+
+说明：
+
+- 程序会优先复用本机已有 Apple 登录态。
+- 若登录态失效，会等待你在浏览器中手动登录并完成双重验证。
+- 本地会话目录已加入 `.gitignore`，不会提交到仓库。
+
 ## 环境变量
 
 需要在 `.env.local` 中配置：
