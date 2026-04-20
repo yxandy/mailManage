@@ -1,17 +1,19 @@
 // ==UserScript==
 // @name         iCloud Hide My Email 调试采集器
 // @namespace    https://github.com/yxand/youxiang
-// @version      0.3.0
+// @version      0.3.1
 // @description  串行完成 iCloud Hide My Email 创建流程，并在成功页提取邮箱后上报 Vercel 接口
 // @match        *://*.icloud.com/*
 // @match        *://*.icloud.com.cn/*
 // @run-at       document-idle
 // @grant        GM_xmlhttpRequest
+// @grant        GM_setClipboard
 // @connect      *
 // ==/UserScript==
 
 (function () {
   'use strict';
+  const isTopWindow = window.top === window.self;
 
   const CONFIG = {
     // 流程开关
@@ -38,6 +40,7 @@
     createClicked: false,
     successHandled: false,
     hasLoggedWaiting: false,
+    lastStepLogAt: 0,
   };
 
   log('脚本已注入，当前地址：', window.location.href);
@@ -59,6 +62,7 @@
     state.createClicked = false;
     state.successHandled = false;
     state.hasLoggedWaiting = false;
+    state.lastStepLogAt = 0;
   }
 
   function readRunFlag() {
@@ -108,18 +112,46 @@
   }
 
   async function copyToClipboard(text) {
+    const safeText = String(text ?? '');
+    if (!safeText) {
+      return false;
+    }
+
+    // 先尝试把焦点切回文档，避免 "Document is not focused"。
+    try {
+      window.focus();
+    } catch {
+      // 忽略
+    }
+
     try {
       if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-        await navigator.clipboard.writeText(text);
+        await navigator.clipboard.writeText(safeText);
         return true;
       }
     } catch (error) {
-      warn('Clipboard API 复制失败，尝试回退方案：', error);
+      warn('Clipboard API 第一次复制失败，尝试重试：', error);
+      try {
+        await new Promise((resolve) => window.setTimeout(resolve, 120));
+        await navigator.clipboard.writeText(safeText);
+        return true;
+      } catch (retryError) {
+        warn('Clipboard API 重试失败，尝试 GM_setClipboard：', retryError);
+      }
+    }
+
+    try {
+      if (typeof GM_setClipboard === 'function') {
+        GM_setClipboard(safeText, 'text');
+        return true;
+      }
+    } catch (error) {
+      warn('GM_setClipboard 复制失败，尝试 execCommand 回退：', error);
     }
 
     try {
       const textarea = document.createElement('textarea');
-      textarea.value = text;
+      textarea.value = safeText;
       textarea.style.position = 'fixed';
       textarea.style.left = '-9999px';
       document.body.appendChild(textarea);
@@ -199,10 +231,21 @@
 
   function findAddButtonInModal() {
     const modal = findHideMyEmailModal((node) =>
-      Boolean(node.querySelector('div.IconButton.AddButton button[title="Add"][type="button"]'))
+      Boolean(node.querySelector('div.IconButton.AddButton button[type="button"]'))
     );
     if (!modal) return null;
-    return modal.querySelector('div.IconButton.AddButton button[title="Add"][type="button"]');
+
+    // 主定位：按你给出的父级结构
+    const primary = modal.querySelector('div.IconButton.AddButton button[type="button"]');
+    if (primary) {
+      return primary;
+    }
+
+    // 兜底：在当前可见弹层里，找文本为空的图标按钮中最像“加号”的按钮
+    const candidates = Array.from(
+      modal.querySelectorAll('button.button.button-icon-only.button-rounded-rectangle[type="button"]')
+    );
+    return candidates[candidates.length - 1] || null;
   }
 
   function tryClickAdd() {
@@ -427,6 +470,14 @@
   }
 
   function createFloatingStartButton() {
+    const existingButtons = document.querySelectorAll('#__hme_start_btn__');
+    if (existingButtons.length > 1) {
+      // 清理重复按钮，仅保留最后一个。
+      for (let i = 0; i < existingButtons.length - 1; i += 1) {
+        existingButtons[i].remove();
+      }
+    }
+
     const existing = document.getElementById('__hme_start_btn__');
     if (existing) {
       return existing;
@@ -478,7 +529,25 @@
   function setRunning(value) {
     state.isRunning = value;
     writeRunFlag(value);
-    updateStartButton();
+    if (isTopWindow) {
+      updateStartButton();
+    }
+  }
+
+  function logStepSnapshot() {
+    const now = Date.now();
+    if (now - state.lastStepLogAt < 2500) {
+      return;
+    }
+    state.lastStepLogAt = now;
+
+    const hasTileButton = Boolean(findHideMyEmailTileButton());
+    const hasAddButton = Boolean(findAddButtonInModal());
+    const hasCreatePanel = Boolean(findCreateNewAddressPanel());
+    const hasSuccessPage = Boolean(findSuccessPageData());
+    log(
+      `步骤快照 url=${window.location.href} tile=${hasTileButton} add=${hasAddButton} create=${hasCreatePanel} success=${hasSuccessPage}`
+    );
   }
 
   async function tick() {
@@ -487,6 +556,7 @@
     }
     state.isTicking = true;
     try {
+      logStepSnapshot();
       const hasTile = tryClickTile();
       const hasAdd = tryClickAdd();
       const hasCreatePage = tryFillLabelAndClickCreate();
@@ -503,8 +573,10 @@
     }
   }
 
-  createFloatingStartButton();
-  updateStartButton();
+  if (isTopWindow) {
+    createFloatingStartButton();
+    updateStartButton();
+  }
 
   // 点击开始后若发生页面跳转（同域），在新页面自动续跑。
   if (readRunFlag()) {
