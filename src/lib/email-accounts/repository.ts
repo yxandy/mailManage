@@ -89,6 +89,23 @@ export async function createEmailAccount(input: EmailAccountWriteInput) {
   }
 }
 
+export async function findActiveEmailAccountByEmailName(emailName: string) {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("email_accounts")
+    .select("id, email_name")
+    .eq("email_name", emailName)
+    .is("deleted_at", null)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`查询邮箱账号失败：${error.message}`);
+  }
+
+  return data as Pick<EmailAccountRecord, "id" | "email_name"> | null;
+}
+
 export async function updateEmailAccount(id: string, input: EmailAccountWriteInput) {
   const supabase = createSupabaseServerClient();
   const { error } = await supabase.from("email_accounts").update(input).eq("id", id);

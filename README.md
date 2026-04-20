@@ -60,6 +60,7 @@ npm run dev
 - `SESSION_SECRET`
 - `ADMIN_SEED_USERNAME`
 - `ADMIN_SEED_PASSWORD`
+- `HME_INGEST_TOKEN`（给油猴脚本调用 `/api/internal/hme-ingest` 使用的 Bearer Token）
 
 ## 数据库
 
