@@ -94,14 +94,14 @@ export async function POST(request: Request) {
     await createEmailAccount({
       email_name: email,
       source: body.source?.trim() || "icloud-hme-userscript",
-      user_name: body.label?.trim() || null,
+      user_name: null,
       birthday: null,
       registered_at: null,
-      registered_location: body.pageUrl?.trim() || null,
+      registered_location: "icloud",
       is_registered_cg: false,
       cg_registered_at: null,
-      is_linked_s2a: true,
-      linked_at: body.capturedAt?.trim() || new Date().toISOString(),
+      is_linked_s2a: false,
+      linked_at: null,
       is_expired: false,
       expired_at: null,
     });
