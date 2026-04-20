@@ -52,6 +52,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       items={data.items}
       stats={stats}
       currentPage={data.page}
+      pageSize={data.pageSize}
       totalPages={data.totalPages}
       total={data.total}
       searchParams={{

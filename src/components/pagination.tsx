@@ -1,6 +1,8 @@
 type PaginationProps = {
   currentPage: number;
+  pageSize: number;
   totalPages: number;
+  total: number;
   searchParams: Record<string, string | undefined>;
 };
 
@@ -20,16 +22,25 @@ function buildHref(page: number, searchParams: Record<string, string | undefined
 
 export function Pagination({
   currentPage,
+  pageSize,
   totalPages,
+  total,
   searchParams,
 }: PaginationProps) {
   const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
+  const start = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const end = total === 0 ? 0 : Math.min(currentPage * pageSize, total);
 
   return (
     <nav className="flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-[var(--border)] bg-[var(--panel)] px-4 py-3">
-      <p className="text-sm text-[var(--muted)]">
-        第 {currentPage} / {totalPages} 页
-      </p>
+      <div className="space-y-1 text-sm text-[var(--muted)]">
+        <p>
+          第 {currentPage} / {totalPages} 页
+        </p>
+        <p>
+          共 {total} 条，当前显示第 {start} - {end} 条
+        </p>
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         {pages.map((page) => {
           const isActive = page === currentPage;

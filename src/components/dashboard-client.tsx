@@ -15,6 +15,7 @@ type DashboardClientProps = {
   items: EmailAccountRecord[];
   stats: EmailAccountDashboardStats;
   currentPage: number;
+  pageSize: number;
   totalPages: number;
   total: number;
   searchParams: Record<string, string | undefined>;
@@ -65,6 +66,7 @@ export function DashboardClient({
   items,
   stats,
   currentPage,
+  pageSize,
   totalPages,
   total,
   searchParams,
@@ -334,7 +336,9 @@ export function DashboardClient({
 
           <Pagination
             currentPage={currentPage}
+            pageSize={pageSize}
             totalPages={totalPages}
+            total={total}
             searchParams={searchParams}
           />
         </div>
