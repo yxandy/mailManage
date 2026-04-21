@@ -14,6 +14,7 @@ type DashboardClientProps = {
   username: string;
   items: EmailAccountRecord[];
   stats: EmailAccountDashboardStats;
+  emailDomainOptions: string[];
   currentPage: number;
   pageSize: number;
   totalPages: number;
@@ -65,6 +66,7 @@ export function DashboardClient({
   username,
   items,
   stats,
+  emailDomainOptions,
   currentPage,
   pageSize,
   totalPages,
@@ -188,7 +190,10 @@ export function DashboardClient({
           </section>
 
           <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
-            <form className="grid gap-4 md:grid-cols-[2fr_1fr_1fr_auto] md:items-end" action="/dashboard">
+            <form
+              className="grid gap-4 md:grid-cols-[2fr_1fr_1fr_1fr_auto] md:items-end"
+              action="/dashboard"
+            >
               <label className="grid gap-2 text-sm">
                 <span className="text-[var(--muted)]">搜索</span>
                 <input
@@ -197,6 +202,21 @@ export function DashboardClient({
                   placeholder="按邮箱账号名称或用户姓名搜索"
                   className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
                 />
+              </label>
+              <label className="grid gap-2 text-sm">
+                <span className="text-[var(--muted)]">邮箱域名</span>
+                <select
+                  name="domain"
+                  defaultValue={searchParams.domain ?? ""}
+                  className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                >
+                  <option value="">全部</option>
+                  {emailDomainOptions.map((domain) => (
+                    <option key={domain} value={domain}>
+                      {domain}
+                    </option>
+                  ))}
+                </select>
               </label>
               <label className="grid gap-2 text-sm">
                 <span className="text-[var(--muted)]">是否关联 s2a</span>

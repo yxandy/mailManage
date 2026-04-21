@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { normalizeEmailAccountInput, splitEmailName } from "./schema.ts";
+import {
+  groupEmailDomainsFromEmailNames,
+  normalizeEmailAccountInput,
+  PRESET_EMAIL_DOMAINS,
+  splitEmailName,
+} from "./schema.ts";
 
 test("账号名称和预设域名会合并成 email_name", () => {
   const result = normalizeEmailAccountInput({
@@ -141,6 +146,32 @@ test("已有 email_name 可以拆分为账号和域名", () => {
     emailDomain: "custom",
     customEmailDomain: "example.com",
   });
+});
+
+test("预设域名包含 proton.me 且可被识别", () => {
+  assert.equal(PRESET_EMAIL_DOMAINS.includes("proton.me"), true);
+
+  const result = splitEmailName("hello@proton.me");
+
+  assert.deepEqual(result, {
+    emailAccountName: "hello",
+    emailDomain: "proton.me",
+    customEmailDomain: "",
+  });
+});
+
+test("可从邮箱名称列表聚合出唯一域名选项", () => {
+  const result = groupEmailDomainsFromEmailNames([
+    "a@gmail.com",
+    "b@GMAIL.com",
+    "c@proton.me",
+    "invalid-email",
+    "",
+    "d@outlook.com",
+    "e@proton.me",
+  ]);
+
+  assert.deepEqual(result, ["gmail.com", "outlook.com", "proton.me"]);
 });
 
 test("未关联 s2a 时会清空关联时间", () => {

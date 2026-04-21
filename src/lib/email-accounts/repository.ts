@@ -5,6 +5,7 @@ import type {
   EmailAccountRecord,
   EmailAccountWriteInput,
 } from "./schema";
+import { groupEmailDomainsFromEmailNames } from "./schema";
 import { getEmailAccountOrderRules } from "./sort";
 import { calculateEmailAccountStats, type EmailAccountDashboardStats } from "./stats";
 
@@ -41,6 +42,7 @@ export async function listEmailAccounts(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
   const keyword = filters.keyword?.trim();
+  const domain = filters.domain?.trim().toLowerCase();
 
   let query = supabase
     .from("email_accounts")
@@ -53,6 +55,10 @@ export async function listEmailAccounts(
 
   if (keyword) {
     query = query.or(`email_name.ilike.%${keyword}%,user_name.ilike.%${keyword}%`);
+  }
+
+  if (domain) {
+    query = query.ilike("email_name", `%@${domain}`);
   }
 
   if (typeof filters.linked === "boolean") {
@@ -78,6 +84,22 @@ export async function listEmailAccounts(
     pageSize,
     totalPages: Math.max(Math.ceil(total / pageSize), 1),
   };
+}
+
+export async function listEmailAccountDomainOptions(): Promise<string[]> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("email_accounts")
+    .select("email_name")
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new Error(`查询邮箱域名选项失败：${error.message}`);
+  }
+
+  const emailNames = (data ?? []).map((item) => item.email_name).filter(Boolean) as string[];
+
+  return groupEmailDomainsFromEmailNames(emailNames);
 }
 
 export async function createEmailAccount(input: EmailAccountWriteInput) {

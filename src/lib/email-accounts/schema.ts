@@ -37,9 +37,40 @@ export const PRESET_EMAIL_DOMAINS = [
   "gmail.com",
   "qq.com",
   "126.com",
+  "proton.me",
 ] as const;
 
 export type EmailDomainOption = (typeof PRESET_EMAIL_DOMAINS)[number] | "custom";
+
+function extractEmailDomain(emailName: string): string | null {
+  const normalized = normalizeText(emailName).toLowerCase();
+
+  if (!normalized) {
+    return null;
+  }
+
+  const atIndex = normalized.lastIndexOf("@");
+
+  if (atIndex <= 0 || atIndex === normalized.length - 1) {
+    return null;
+  }
+
+  return normalized.slice(atIndex + 1);
+}
+
+export function groupEmailDomainsFromEmailNames(emailNames: string[]): string[] {
+  const uniqueDomains = new Set<string>();
+
+  for (const emailName of emailNames) {
+    const domain = extractEmailDomain(emailName);
+
+    if (domain) {
+      uniqueDomains.add(domain);
+    }
+  }
+
+  return Array.from(uniqueDomains).sort((a, b) => a.localeCompare(b, "en"));
+}
 
 function toBoolean(value: boolean | string): boolean {
   if (typeof value === "boolean") {
@@ -191,6 +222,7 @@ export type EmailAccountRecord = EmailAccountWriteInput & {
 
 export type EmailAccountFilters = {
   keyword?: string;
+  domain?: string;
   linked?: boolean | null;
   expired?: boolean | null;
   page?: number;
