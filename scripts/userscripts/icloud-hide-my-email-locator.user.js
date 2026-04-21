@@ -534,6 +534,17 @@
     }
   }
 
+  function syncRunningStateFromStorage() {
+    const flag = readRunFlag();
+    if (state.isRunning !== flag) {
+      state.isRunning = flag;
+      if (isTopWindow) {
+        updateStartButton();
+      }
+      log(`运行状态已同步：${flag ? "执行中" : "待机"}`);
+    }
+  }
+
   function logStepSnapshot() {
     const now = Date.now();
     if (now - state.lastStepLogAt < 2500) {
@@ -597,6 +608,7 @@
 
   // 兜底轮询：避免页面切换未触发可观察变更导致流程停住。
   window.setInterval(() => {
+    syncRunningStateFromStorage();
     void tick();
   }, 800);
 })();
