@@ -427,6 +427,7 @@ export function DashboardClient({
         mode={dialogMode === "edit" ? "edit" : "create"}
         open={dialogMode !== null}
         record={editingRecord}
+        emailDomainOptions={emailDomainOptions}
         onClose={() => {
           setDialogMode(null);
           setEditingRecord(null);

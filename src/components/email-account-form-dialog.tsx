@@ -4,23 +4,22 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
-  PRESET_EMAIL_DOMAINS,
   splitEmailName,
   type EmailAccountRecord,
-  type EmailDomainOption,
 } from "@/lib/email-accounts/schema";
 
 type EmailAccountFormDialogProps = {
   mode: "create" | "edit";
   open: boolean;
   record?: EmailAccountRecord | null;
+  emailDomainOptions: string[];
   onClose: () => void;
 };
 
 type FormState = {
   source: string;
   email_account_name: string;
-  email_domain: EmailDomainOption;
+  email_domain: string;
   custom_email_domain: string;
   user_name: string;
   birthday: string;
@@ -48,14 +47,25 @@ function toDateInputValue(value?: string | null): string {
   return date.toISOString().slice(0, 10);
 }
 
-function createInitialState(record?: EmailAccountRecord | null): FormState {
+function createInitialState(
+  record: EmailAccountRecord | null | undefined,
+  emailDomainOptions: string[],
+): FormState {
   const emailNameParts = splitEmailName(record?.email_name ?? "");
+  const domainOptionsLowerCase = new Set(emailDomainOptions.map((domain) => domain.toLowerCase()));
+  const customDomain = emailNameParts.customEmailDomain.toLowerCase();
+  const canUseExistingDomainOption =
+    emailNameParts.emailDomain === "custom" &&
+    customDomain &&
+    domainOptionsLowerCase.has(customDomain);
+  const initialEmailDomain = canUseExistingDomainOption ? customDomain : emailNameParts.emailDomain;
+  const initialCustomEmailDomain = canUseExistingDomainOption ? "" : emailNameParts.customEmailDomain;
 
   return {
     source: record?.source ?? "manual",
     email_account_name: emailNameParts.emailAccountName,
-    email_domain: emailNameParts.emailDomain,
-    custom_email_domain: emailNameParts.customEmailDomain,
+    email_domain: initialEmailDomain,
+    custom_email_domain: initialCustomEmailDomain,
     user_name: record?.user_name ?? "",
     birthday: record?.birthday ?? "",
     registered_at: toDateInputValue(record?.registered_at),
@@ -73,20 +83,33 @@ export function EmailAccountFormDialog({
   mode,
   open,
   record,
+  emailDomainOptions,
   onClose,
 }: EmailAccountFormDialogProps) {
   const router = useRouter();
-  const [formState, setFormState] = useState<FormState>(createInitialState(record));
+  const [formState, setFormState] = useState<FormState>(
+    createInitialState(record, emailDomainOptions),
+  );
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (open) {
-      setFormState(createInitialState(record));
+      setFormState(createInitialState(record, emailDomainOptions));
       setErrorMessage("");
       setIsSubmitting(false);
     }
-  }, [open, record]);
+  }, [open, record, emailDomainOptions]);
+
+  const selectableEmailDomains = useMemo(() => {
+    const domainSet = new Set(emailDomainOptions);
+
+    if (formState.email_domain !== "custom" && formState.email_domain) {
+      domainSet.add(formState.email_domain);
+    }
+
+    return Array.from(domainSet).sort((a, b) => a.localeCompare(b, "en"));
+  }, [emailDomainOptions, formState.email_domain]);
 
   const title = useMemo(() => (mode === "create" ? "新增邮箱账号" : "编辑邮箱账号"), [mode]);
 
@@ -170,13 +193,13 @@ export function EmailAccountFormDialog({
                   onChange={(event) =>
                     setFormState((current) => ({
                       ...current,
-                      email_domain: event.target.value as EmailDomainOption,
+                      email_domain: event.target.value,
                       custom_email_domain:
                         event.target.value === "custom" ? current.custom_email_domain : "",
                     }))
                   }
                 >
-                  {PRESET_EMAIL_DOMAINS.map((domain) => (
+                  {selectableEmailDomains.map((domain) => (
                     <option key={domain} value={domain}>
                       {domain}
                     </option>
