@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   groupEmailDomainsFromEmailNames,
+  normalizeDomainFilters,
   normalizeEmailAccountInput,
   PRESET_EMAIL_DOMAINS,
   splitEmailName,
@@ -172,6 +173,18 @@ test("可从邮箱名称列表聚合出唯一域名选项", () => {
   ]);
 
   assert.deepEqual(result, ["gmail.com", "outlook.com", "proton.me"]);
+});
+
+test("可清洗并去重多选域名参数", () => {
+  const result = normalizeDomainFilters([
+    " GMAIL.com ",
+    "proton.me",
+    "",
+    "gmail.com",
+    "outlook.com",
+  ]);
+
+  assert.deepEqual(result, ["gmail.com", "proton.me", "outlook.com"]);
 });
 
 test("未关联 s2a 时会清空关联时间", () => {

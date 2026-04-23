@@ -42,7 +42,7 @@ export async function listEmailAccounts(
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
   const keyword = filters.keyword?.trim();
-  const domain = filters.domain?.trim().toLowerCase();
+  const domains = filters.domains ?? [];
 
   let query = supabase
     .from("email_accounts")
@@ -57,8 +57,9 @@ export async function listEmailAccounts(
     query = query.or(`email_name.ilike.%${keyword}%,user_name.ilike.%${keyword}%`);
   }
 
-  if (domain) {
-    query = query.ilike("email_name", `%@${domain}`);
+  if (domains.length > 0) {
+    const domainFilters = domains.map((domain) => `email_name.ilike.%@${domain}`).join(",");
+    query = query.or(domainFilters);
   }
 
   if (typeof filters.linked === "boolean") {

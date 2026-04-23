@@ -5,11 +5,12 @@ import {
   listEmailAccountDomainOptions,
   listEmailAccounts,
 } from "@/lib/email-accounts/repository";
+import { normalizeDomainFilters } from "@/lib/email-accounts/schema";
 
 type DashboardPageProps = {
   searchParams: Promise<{
     keyword?: string;
-    domain?: string;
+    domain?: string | string[];
     linked?: string;
     expired?: string;
     page?: string;
@@ -34,13 +35,26 @@ function parsePage(value?: string): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
 }
 
+function parseDomainFilters(value?: string | string[]): string[] {
+  if (Array.isArray(value)) {
+    return normalizeDomainFilters(value);
+  }
+
+  if (typeof value === "string") {
+    return normalizeDomainFilters([value]);
+  }
+
+  return [];
+}
+
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const session = await requireSession();
   const resolvedSearchParams = await searchParams;
+  const selectedDomains = parseDomainFilters(resolvedSearchParams.domain);
   const [data, stats, domainOptions] = await Promise.all([
     listEmailAccounts({
       keyword: resolvedSearchParams.keyword,
-      domain: resolvedSearchParams.domain,
+      domains: selectedDomains,
       linked: parseBooleanFilter(resolvedSearchParams.linked),
       expired: parseBooleanFilter(resolvedSearchParams.expired),
       page: parsePage(resolvedSearchParams.page),
@@ -62,7 +76,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       total={data.total}
       searchParams={{
         keyword: resolvedSearchParams.keyword,
-        domain: resolvedSearchParams.domain,
+        domain: selectedDomains,
         linked: resolvedSearchParams.linked,
         expired: resolvedSearchParams.expired,
       }}

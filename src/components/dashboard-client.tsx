@@ -19,8 +19,16 @@ type DashboardClientProps = {
   pageSize: number;
   totalPages: number;
   total: number;
-  searchParams: Record<string, string | undefined>;
+  searchParams: Record<string, string | string[] | undefined>;
 };
+
+function toStringArray(value: string | string[] | undefined): string[] {
+  if (Array.isArray(value)) {
+    return value.filter(Boolean);
+  }
+
+  return value ? [value] : [];
+}
 
 function formatDate(value?: string | null, includeTime = false) {
   if (!value) {
@@ -77,6 +85,10 @@ export function DashboardClient({
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingRecord, setEditingRecord] = useState<EmailAccountRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedDomains, setSelectedDomains] = useState<string[]>(() =>
+    toStringArray(searchParams.domain),
+  );
+  const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
 
   async function handleDelete(id: string) {
     const confirmed = window.confirm("确认删除这条邮箱账号记录吗？该操作会执行软删除。");
@@ -194,6 +206,9 @@ export function DashboardClient({
               className="grid gap-4 md:grid-cols-[2fr_1fr_1fr_1fr_auto] md:items-end"
               action="/dashboard"
             >
+              {selectedDomains.map((domain) => (
+                <input key={domain} type="hidden" name="domain" value={domain} />
+              ))}
               <label className="grid gap-2 text-sm">
                 <span className="text-[var(--muted)]">搜索</span>
                 <input
@@ -205,18 +220,62 @@ export function DashboardClient({
               </label>
               <label className="grid gap-2 text-sm">
                 <span className="text-[var(--muted)]">邮箱域名</span>
-                <select
-                  name="domain"
-                  defaultValue={searchParams.domain ?? ""}
-                  className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                <div className="relative"
+                  onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget)) {
+                      setIsDomainDropdownOpen(false);
+                    }
+                  }}
                 >
-                  <option value="">全部</option>
-                  {emailDomainOptions.map((domain) => (
-                    <option key={domain} value={domain}>
-                      {domain}
-                    </option>
-                  ))}
-                </select>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-left"
+                    onClick={() => setIsDomainDropdownOpen((current) => !current)}
+                  >
+                    <span className="truncate">
+                      {selectedDomains.length === 0
+                        ? "全部"
+                        : selectedDomains.length === 1
+                          ? selectedDomains[0]
+                          : `已选择 ${selectedDomains.length} 个域名`}
+                    </span>
+                    <span className="text-xs text-[var(--muted)]">▼</span>
+                  </button>
+                  {isDomainDropdownOpen ? (
+                    <div className="absolute z-20 mt-2 max-h-64 w-full overflow-y-auto rounded-2xl border border-[var(--border)] bg-white p-2 shadow-lg">
+                      <button
+                        type="button"
+                        className="mb-2 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-left text-sm"
+                        onClick={() => setSelectedDomains([])}
+                      >
+                        全部
+                      </button>
+                      <div className="grid gap-1">
+                        {emailDomainOptions.map((domain) => (
+                          <label
+                            key={domain}
+                            className="flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-stone-50"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedDomains.includes(domain)}
+                              onChange={(event) => {
+                                setSelectedDomains((current) => {
+                                  if (event.target.checked) {
+                                    return [...current, domain];
+                                  }
+
+                                  return current.filter((item) => item !== domain);
+                                });
+                              }}
+                            />
+                            <span>{domain}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </label>
               <label className="grid gap-2 text-sm">
                 <span className="text-[var(--muted)]">是否关联 s2a</span>

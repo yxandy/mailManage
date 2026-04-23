@@ -72,6 +72,20 @@ export function groupEmailDomainsFromEmailNames(emailNames: string[]): string[] 
   return Array.from(uniqueDomains).sort((a, b) => a.localeCompare(b, "en"));
 }
 
+export function normalizeDomainFilters(domains: string[]): string[] {
+  const uniqueDomains = new Set<string>();
+
+  for (const domain of domains) {
+    const normalizedDomain = normalizeText(domain).toLowerCase();
+
+    if (normalizedDomain) {
+      uniqueDomains.add(normalizedDomain);
+    }
+  }
+
+  return Array.from(uniqueDomains);
+}
+
 function toBoolean(value: boolean | string): boolean {
   if (typeof value === "boolean") {
     return value;
@@ -222,7 +236,7 @@ export type EmailAccountRecord = EmailAccountWriteInput & {
 
 export type EmailAccountFilters = {
   keyword?: string;
-  domain?: string;
+  domains?: string[];
   linked?: boolean | null;
   expired?: boolean | null;
   page?: number;
