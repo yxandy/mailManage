@@ -27,7 +27,7 @@ test("账号名称和预设域名会合并成 email_name", () => {
   assert.equal(result.email_name, "test@gmail.com");
 });
 
-test("注册时间和关联时间按纯日期保存，避免时区偏移", () => {
+test("注册时间传入纯日期时补充当前时分，关联时间仍按零点保存", () => {
   const result = normalizeEmailAccountInput({
     email_account_name: "test",
     email_domain: "gmail.com",
@@ -42,7 +42,7 @@ test("注册时间和关联时间按纯日期保存，避免时区偏移", () =>
     expired_at: "",
   });
 
-  assert.equal(result.registered_at, "2026-04-06T00:00:00.000Z");
+  assert.match(result.registered_at ?? "", /^2026-04-06T\d{2}:\d{2}:00\.000Z$/);
   assert.equal(result.linked_at, "2026-04-07T00:00:00.000Z");
 });
 

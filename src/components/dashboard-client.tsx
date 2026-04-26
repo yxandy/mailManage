@@ -70,6 +70,30 @@ function formatDateOnly(value?: string | null) {
   }).format(date);
 }
 
+function formatRegisteredDuration(value?: string | null) {
+  if (!value) {
+    return "-";
+  }
+
+  const registeredAt = new Date(value);
+
+  if (Number.isNaN(registeredAt.getTime())) {
+    return "-";
+  }
+
+  const diffMilliseconds = Date.now() - registeredAt.getTime();
+
+  if (diffMilliseconds < 0) {
+    return "0小时0分钟";
+  }
+
+  const totalMinutes = Math.floor(diffMilliseconds / (1000 * 60));
+  const totalHours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return `${totalHours}小时${minutes}分钟`;
+}
+
 export function DashboardClient({
   username,
   items,
@@ -328,11 +352,10 @@ export function DashboardClient({
                       "用户姓名",
                       "用户生日",
                       "注册时间",
+                      "注册时长",
                       "注册地点",
                       "是否关联 s2a",
                       "关联时间",
-                      "是否已失效",
-                      "失效时间",
                       "操作",
                     ].map((label) => (
                       <th key={label} className="border-b border-[var(--border)] px-4 py-4 font-medium">
@@ -360,6 +383,9 @@ export function DashboardClient({
                           {formatDateOnly(item.registered_at)}
                         </td>
                         <td className="border-b border-[var(--border)] px-4 py-4">
+                          {formatRegisteredDuration(item.registered_at)}
+                        </td>
+                        <td className="border-b border-[var(--border)] px-4 py-4">
                           {item.registered_location}
                         </td>
                         <td className="border-b border-[var(--border)] px-4 py-4">
@@ -367,12 +393,6 @@ export function DashboardClient({
                         </td>
                         <td className="border-b border-[var(--border)] px-4 py-4">
                           {formatDateOnly(item.linked_at)}
-                        </td>
-                        <td className="border-b border-[var(--border)] px-4 py-4">
-                          {item.is_expired ? "是" : "否"}
-                        </td>
-                        <td className="border-b border-[var(--border)] px-4 py-4">
-                          {formatDateOnly(item.expired_at)}
                         </td>
                         <td className="border-b border-[var(--border)] px-4 py-4">
                           <div className="flex flex-wrap gap-2">
@@ -401,7 +421,7 @@ export function DashboardClient({
                   ) : (
                     <tr>
                       <td
-                        colSpan={10}
+                        colSpan={9}
                         className="px-4 py-12 text-center text-sm text-[var(--muted)]"
                       >
                         当前没有符合条件的邮箱账号记录。

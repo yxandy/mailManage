@@ -126,6 +126,44 @@ function normalizeOptionalDateTime(value: string | null | undefined): string | n
   return parsedDate.toISOString();
 }
 
+function normalizeDateOnlyWithCurrentUtcHourMinute(value: string): string | null {
+  const matched = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+
+  if (!matched) {
+    return null;
+  }
+
+  const year = Number(matched[1]);
+  const monthIndex = Number(matched[2]) - 1;
+  const day = Number(matched[3]);
+  const now = new Date();
+  const composedDate = new Date(
+    Date.UTC(year, monthIndex, day, now.getUTCHours(), now.getUTCMinutes(), 0, 0),
+  );
+
+  if (Number.isNaN(composedDate.getTime())) {
+    throw new Error("时间格式不正确");
+  }
+
+  return composedDate.toISOString();
+}
+
+function normalizeRegisteredAtDateTime(value: string | null | undefined): string | null {
+  const normalized = normalizeText(value);
+
+  if (!normalized) {
+    return null;
+  }
+
+  const normalizedDateOnly = normalizeDateOnlyWithCurrentUtcHourMinute(normalized);
+
+  if (normalizedDateOnly) {
+    return normalizedDateOnly;
+  }
+
+  return normalizeOptionalDateTime(normalized);
+}
+
 function normalizeEmailName(
   emailAccountNameValue: string | null | undefined,
   emailDomainValue: string | null | undefined,
@@ -216,7 +254,7 @@ export function normalizeEmailAccountInput(
     source: normalizeOptionalText(input.source) ?? "manual",
     user_name: normalizeOptionalText(input.user_name),
     birthday: normalizeOptionalDate(input.birthday),
-    registered_at: normalizeOptionalDateTime(input.registered_at),
+    registered_at: normalizeRegisteredAtDateTime(input.registered_at),
     registered_location: normalizeOptionalText(input.registered_location),
     is_registered_cg: isRegisteredCg,
     cg_registered_at: isRegisteredCg ? normalizeOptionalDateTime(input.cg_registered_at) : null,
