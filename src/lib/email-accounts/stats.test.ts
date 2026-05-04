@@ -55,6 +55,8 @@ test("邮箱统计卡片数据按业务规则计算", () => {
   assert.deepEqual(result, {
     unlinkedCount: 1,
     linkedCount: 2,
+    linkedActiveCount: 0,
+    linkedExpiredCount: 2,
     expiredPercentage: 66.7,
     averageLinkedLifetimeDays: 4.3,
   });
@@ -66,6 +68,8 @@ test("没有有效存活样本时平均存活时长返回空", () => {
   assert.deepEqual(result, {
     unlinkedCount: 0,
     linkedCount: 0,
+    linkedActiveCount: 0,
+    linkedExpiredCount: 0,
     expiredPercentage: 0,
     averageLinkedLifetimeDays: null,
   });

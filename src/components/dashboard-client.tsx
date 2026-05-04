@@ -174,11 +174,20 @@ export function DashboardClient({
                       <p className="mt-1 text-2xl font-semibold">{stats.unlinkedCount}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-[var(--muted)]">已关联</p>
+                      <p className="text-xs text-[var(--muted)]">已关联（总）</p>
                       <p className="mt-1 text-2xl font-semibold">{stats.linkedCount}</p>
                     </div>
                   </div>
-                  <p className="mt-2 text-sm text-[var(--muted)]">有效邮箱数量分布</p>
+                  <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-xs text-[var(--muted)]">已关联有效</p>
+                      <p className="mt-1 font-semibold">{stats.linkedActiveCount}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-[var(--muted)]">已关联失效</p>
+                      <p className="mt-1 font-semibold">{stats.linkedExpiredCount}</p>
+                    </div>
+                  </div>
                 </div>
                 <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-4 py-4">
                   <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">

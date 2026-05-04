@@ -3,6 +3,8 @@ import type { EmailAccountRecord } from "./schema";
 export type EmailAccountDashboardStats = {
   unlinkedCount: number;
   linkedCount: number;
+  linkedActiveCount: number;
+  linkedExpiredCount: number;
   expiredPercentage: number;
   averageLinkedLifetimeDays: number | null;
 };
@@ -17,6 +19,12 @@ export function calculateEmailAccountStats(
   const total = records.length;
   const unlinkedCount = records.filter((record) => !record.is_linked_s2a).length;
   const linkedCount = records.filter((record) => record.is_linked_s2a).length;
+  const linkedActiveCount = records.filter(
+    (record) => record.is_linked_s2a && !record.is_expired,
+  ).length;
+  const linkedExpiredCount = records.filter(
+    (record) => record.is_linked_s2a && record.is_expired,
+  ).length;
   const expiredCount = records.filter((record) => record.is_expired).length;
 
   const lifetimeValues = records
@@ -38,6 +46,8 @@ export function calculateEmailAccountStats(
   return {
     unlinkedCount,
     linkedCount,
+    linkedActiveCount,
+    linkedExpiredCount,
     expiredPercentage: total === 0 ? 0 : roundToOneDecimal((expiredCount / total) * 100),
     averageLinkedLifetimeDays:
       lifetimeValues.length === 0
