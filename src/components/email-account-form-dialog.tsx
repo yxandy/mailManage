@@ -79,6 +79,24 @@ function createInitialState(
   };
 }
 
+function splitPastedEmail(value: string): { accountName: string; domain: string } | null {
+  const normalized = value.trim();
+  const atIndex = normalized.lastIndexOf("@");
+
+  if (atIndex <= 0 || atIndex === normalized.length - 1) {
+    return null;
+  }
+
+  const accountName = normalized.slice(0, atIndex).trim();
+  const domain = normalized.slice(atIndex + 1).trim().toLowerCase();
+
+  if (!accountName || !domain) {
+    return null;
+  }
+
+  return { accountName, domain };
+}
+
 export function EmailAccountFormDialog({
   mode,
   open,
@@ -149,6 +167,40 @@ export function EmailAccountFormDialog({
     }
   }
 
+  function handleEmailAccountNameChange(value: string) {
+    const parsedEmail = splitPastedEmail(value);
+
+    if (!parsedEmail) {
+      setFormState((current) => ({
+        ...current,
+        email_account_name: value,
+      }));
+      return;
+    }
+
+    setFormState((current) => {
+      const matchedDomainOption = emailDomainOptions.find(
+        (domainOption) => domainOption.toLowerCase() === parsedEmail.domain,
+      );
+
+      if (matchedDomainOption) {
+        return {
+          ...current,
+          email_account_name: parsedEmail.accountName,
+          email_domain: matchedDomainOption,
+          custom_email_domain: "",
+        };
+      }
+
+      return {
+        ...current,
+        email_account_name: parsedEmail.accountName,
+        email_domain: "custom",
+        custom_email_domain: parsedEmail.domain,
+      };
+    });
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/28 px-4 py-8">
       <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
@@ -176,12 +228,7 @@ export function EmailAccountFormDialog({
                 <input
                   className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
                   value={formState.email_account_name}
-                  onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      email_account_name: event.target.value,
-                    }))
-                  }
+                  onChange={(event) => handleEmailAccountNameChange(event.target.value)}
                   required
                 />
               </label>
