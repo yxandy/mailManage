@@ -6,27 +6,8 @@ type PaginationProps = {
   searchParams: Record<string, string | string[] | undefined>;
 };
 
-function buildHref(page: number, searchParams: Record<string, string | string[] | undefined>) {
-  const params = new URLSearchParams();
-
-  Object.entries(searchParams).forEach(([key, value]) => {
-    if (Array.isArray(value)) {
-      value.forEach((item) => {
-        if (item) {
-          params.append(key, item);
-        }
-      });
-      return;
-    }
-
-    if (value) {
-      params.set(key, value);
-    }
-  });
-
-  params.set("page", String(page));
-
-  return `/dashboard?${params.toString()}`;
+function clampPage(page: number, totalPages: number): number {
+  return Math.min(Math.max(page, 1), Math.max(totalPages, 1));
 }
 
 export function Pagination({
@@ -36,9 +17,9 @@ export function Pagination({
   total,
   searchParams,
 }: PaginationProps) {
-  const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
   const start = total === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const end = total === 0 ? 0 : Math.min(currentPage * pageSize, total);
+  const sanitizedCurrentPage = clampPage(currentPage, totalPages);
 
   return (
     <nav className="flex flex-wrap items-center justify-between gap-4 rounded-[24px] border border-[var(--border)] bg-[var(--panel)] px-4 py-3">
@@ -50,26 +31,37 @@ export function Pagination({
           共 {total} 条，当前显示第 {start} - {end} 条
         </p>
       </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {pages.map((page) => {
-          const isActive = page === currentPage;
-
-          return (
-            <a
-              key={page}
-              href={buildHref(page, searchParams)}
-              aria-current={isActive ? "page" : undefined}
-              className={`inline-flex min-w-10 items-center justify-center rounded-xl border px-3 py-2 text-center text-sm leading-none transition ${
-                isActive
-                  ? "border-[var(--primary)] bg-[var(--primary)] !text-[var(--primary-foreground)]"
-                  : "border-[var(--border)] bg-white text-[var(--foreground)] hover:border-[var(--primary)]"
-              }`}
-            >
-              {page}
-            </a>
-          );
-        })}
-      </div>
+      <form action="/dashboard" method="get" className="flex items-center gap-2 text-sm">
+        {Object.entries(searchParams).map(([key, value]) =>
+          Array.isArray(value)
+            ? value
+                .filter(Boolean)
+                .map((item, index) => (
+                  <input key={`${key}-${item}-${index}`} type="hidden" name={key} value={item} />
+                ))
+            : value
+              ? <input key={key} type="hidden" name={key} value={value} />
+              : null,
+        )}
+        <label className="text-[var(--muted)]" htmlFor="page-jump-input">
+          跳转到
+        </label>
+        <input
+          id="page-jump-input"
+          name="page"
+          type="number"
+          min={1}
+          max={Math.max(totalPages, 1)}
+          defaultValue={sanitizedCurrentPage}
+          className="w-24 rounded-xl border border-[var(--border)] bg-white px-3 py-2"
+        />
+        <button
+          type="submit"
+          className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 transition hover:border-[var(--primary)]"
+        >
+          回车跳转
+        </button>
+      </form>
     </nav>
   );
 }
