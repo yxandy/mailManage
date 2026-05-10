@@ -14,6 +14,7 @@ type DashboardClientProps = {
   username: string;
   items: EmailAccountRecord[];
   stats: EmailAccountDashboardStats;
+  tier: "free" | "plus";
   emailDomainOptions: string[];
   currentPage: number;
   pageSize: number;
@@ -94,10 +95,38 @@ function formatRegisteredDuration(value?: string | null) {
   return `${totalHours}小时${minutes}分钟`;
 }
 
+function buildTierHref(
+  tier: "free" | "plus",
+  searchParams: Record<string, string | string[] | undefined>,
+) {
+  const params = new URLSearchParams();
+
+  Object.entries(searchParams).forEach(([key, value]) => {
+    if (key === "tier") {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.filter(Boolean).forEach((item) => params.append(key, item));
+      return;
+    }
+
+    if (value) {
+      params.set(key, value);
+    }
+  });
+
+  params.set("tier", tier);
+  params.delete("page");
+
+  return `/dashboard?${params.toString()}`;
+}
+
 export function DashboardClient({
   username,
   items,
   stats,
+  tier,
   emailDomainOptions,
   currentPage,
   pageSize,
@@ -160,7 +189,7 @@ export function DashboardClient({
                 </p>
                 <h1 className="text-3xl font-semibold">邮箱账号管理</h1>
                 <p className="text-sm leading-7 text-[var(--muted)]">
-                  当前登录管理员：{username}，共 {total} 条有效记录。
+                  当前登录管理员：{username}，当前为 {tier.toUpperCase()}，共 {total} 条有效记录。
                 </p>
               </div>
               <div className="grid flex-1 gap-3 md:grid-cols-3 lg:max-w-3xl">
@@ -213,6 +242,28 @@ export function DashboardClient({
                 </div>
               </div>
               <div className="flex flex-wrap gap-3">
+                <div className="inline-flex overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
+                  <a
+                    href={buildTierHref("free", searchParams)}
+                    className={`px-4 py-3 text-sm font-medium ${
+                      tier === "free"
+                        ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                        : "text-[var(--foreground)]"
+                    }`}
+                  >
+                    free
+                  </a>
+                  <a
+                    href={buildTierHref("plus", searchParams)}
+                    className={`border-l border-[var(--border)] px-4 py-3 text-sm font-medium ${
+                      tier === "plus"
+                        ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                        : "text-[var(--foreground)]"
+                    }`}
+                  >
+                    plus
+                  </a>
+                </div>
                 <button
                   type="button"
                   className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)]"
@@ -239,6 +290,7 @@ export function DashboardClient({
               className="grid gap-4 md:grid-cols-[2fr_1fr_1fr_1fr_auto] md:items-end"
               action="/dashboard"
             >
+              <input type="hidden" name="tier" value={tier} />
               {selectedDomains.map((domain) => (
                 <input key={domain} type="hidden" name="domain" value={domain} />
               ))}
@@ -342,7 +394,7 @@ export function DashboardClient({
                   查询
                 </button>
                 <a
-                  href="/dashboard"
+                  href={`/dashboard?tier=${tier}`}
                   className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm"
                 >
                   重置

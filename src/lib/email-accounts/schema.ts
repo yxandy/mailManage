@@ -5,6 +5,7 @@ export type EmailAccountFormInput = {
   email_domain?: string;
   custom_email_domain?: string;
   user_name: string;
+  is_plus?: boolean | string;
   birthday?: string | null;
   registered_at: string;
   registered_location: string;
@@ -20,6 +21,7 @@ export type EmailAccountWriteInput = {
   email_name: string;
   source: string | null;
   user_name: string | null;
+  is_plus: boolean;
   birthday: string | null;
   registered_at: string | null;
   registered_location: string | null;
@@ -248,11 +250,13 @@ export function normalizeEmailAccountInput(
   const isLinkedS2A = toBoolean(input.is_linked_s2a);
   const isRegisteredCg = toBoolean(input.is_registered_cg ?? false);
   const isExpired = toBoolean(input.is_expired);
+  const isPlus = toBoolean(input.is_plus ?? false);
 
   return {
     email_name: emailName,
     source: normalizeOptionalText(input.source) ?? "manual",
     user_name: normalizeOptionalText(input.user_name),
+    is_plus: isPlus,
     birthday: normalizeOptionalDate(input.birthday),
     registered_at: normalizeRegisteredAtDateTime(input.registered_at),
     registered_location: normalizeOptionalText(input.registered_location),
@@ -275,6 +279,7 @@ export type EmailAccountRecord = EmailAccountWriteInput & {
 export type EmailAccountFilters = {
   keyword?: string;
   domains?: string[];
+  isPlus?: boolean;
   linked?: boolean | null;
   expired?: boolean | null;
   page?: number;

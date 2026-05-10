@@ -13,6 +13,7 @@ type DashboardPageProps = {
     domain?: string | string[];
     linked?: string;
     expired?: string;
+    tier?: string;
     page?: string;
   }>;
 };
@@ -47,21 +48,28 @@ function parseDomainFilters(value?: string | string[]): string[] {
   return [];
 }
 
+function parseIsPlusFilter(value?: string): boolean {
+  return value === "plus";
+}
+
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const session = await requireSession();
   const resolvedSearchParams = await searchParams;
+  const isPlus = parseIsPlusFilter(resolvedSearchParams.tier);
+  const tier = isPlus ? "plus" : "free";
   const selectedDomains = parseDomainFilters(resolvedSearchParams.domain);
   const [data, stats, domainOptions] = await Promise.all([
     listEmailAccounts({
       keyword: resolvedSearchParams.keyword,
       domains: selectedDomains,
+      isPlus,
       linked: parseBooleanFilter(resolvedSearchParams.linked),
       expired: parseBooleanFilter(resolvedSearchParams.expired),
       page: parsePage(resolvedSearchParams.page),
       pageSize: 10,
     }),
-    getEmailAccountDashboardStats(),
-    listEmailAccountDomainOptions(),
+    getEmailAccountDashboardStats(isPlus),
+    listEmailAccountDomainOptions(isPlus),
   ]);
 
   return (
@@ -74,11 +82,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       pageSize={data.pageSize}
       totalPages={data.totalPages}
       total={data.total}
+      tier={tier}
       searchParams={{
         keyword: resolvedSearchParams.keyword,
         domain: selectedDomains,
         linked: resolvedSearchParams.linked,
         expired: resolvedSearchParams.expired,
+        tier,
       }}
     />
   );

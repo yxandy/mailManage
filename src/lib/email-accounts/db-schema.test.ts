@@ -16,3 +16,12 @@ test("email_accounts 表包含 source 来源字段", () => {
     /create table if not exists public\.email_accounts[\s\S]*\n\s*source\s+text,?/i,
   );
 });
+
+test("email_accounts 表包含 is_plus 字段", () => {
+  const schemaSql = readFileSync(schemaFilePath, "utf8");
+
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.email_accounts[\s\S]*\n\s*is_plus\s+boolean\s+not null\s+default false,?/i,
+  );
+});

@@ -95,6 +95,7 @@ export async function POST(request: Request) {
       email_name: email,
       source: body.source?.trim() || "icloud-hme-userscript",
       user_name: null,
+      is_plus: false,
       birthday: null,
       registered_at: body.capturedAt?.trim() || new Date().toISOString(),
       registered_location: "icloud",

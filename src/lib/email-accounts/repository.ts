@@ -17,14 +17,17 @@ export type EmailAccountListResult = {
   totalPages: number;
 };
 
-export async function getEmailAccountDashboardStats(): Promise<EmailAccountDashboardStats> {
+export async function getEmailAccountDashboardStats(
+  isPlus: boolean,
+): Promise<EmailAccountDashboardStats> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("email_accounts")
     .select(
-      "id, email_name, source, user_name, birthday, registered_at, registered_location, is_registered_cg, cg_registered_at, is_linked_s2a, linked_at, is_expired, expired_at, deleted_at, created_at, updated_at",
+      "id, email_name, source, user_name, is_plus, birthday, registered_at, registered_location, is_registered_cg, cg_registered_at, is_linked_s2a, linked_at, is_expired, expired_at, deleted_at, created_at, updated_at",
     )
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .eq("is_plus", isPlus);
 
   if (error) {
     throw new Error(`查询邮箱统计失败：${error.message}`);
@@ -70,6 +73,10 @@ export async function listEmailAccounts(
     query = query.eq("is_expired", filters.expired);
   }
 
+  if (typeof filters.isPlus === "boolean") {
+    query = query.eq("is_plus", filters.isPlus);
+  }
+
   const { data, error, count } = await query.range(from, to);
 
   if (error) {
@@ -87,12 +94,13 @@ export async function listEmailAccounts(
   };
 }
 
-export async function listEmailAccountDomainOptions(): Promise<string[]> {
+export async function listEmailAccountDomainOptions(isPlus: boolean): Promise<string[]> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase
     .from("email_accounts")
     .select("email_name")
-    .is("deleted_at", null);
+    .is("deleted_at", null)
+    .eq("is_plus", isPlus);
 
   if (error) {
     throw new Error(`查询邮箱域名选项失败：${error.message}`);

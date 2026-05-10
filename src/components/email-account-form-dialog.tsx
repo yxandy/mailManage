@@ -18,6 +18,7 @@ type EmailAccountFormDialogProps = {
 
 type FormState = {
   source: string;
+  tier: "" | "free" | "plus";
   email_account_name: string;
   email_domain: string;
   custom_email_domain: string;
@@ -63,6 +64,7 @@ function createInitialState(
 
   return {
     source: record?.source ?? "manual",
+    tier: record ? (record.is_plus ? "plus" : "free") : "",
     email_account_name: emailNameParts.emailAccountName,
     email_domain: initialEmailDomain,
     custom_email_domain: initialCustomEmailDomain,
@@ -138,6 +140,12 @@ export function EmailAccountFormDialog({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage("");
+
+    if (!formState.tier) {
+      setErrorMessage("请选择邮箱类型（free 或 plus）");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -148,7 +156,10 @@ export function EmailAccountFormDialog({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(formState),
+          body: JSON.stringify({
+            ...formState,
+            is_plus: formState.tier === "plus",
+          }),
         },
       );
 
@@ -223,6 +234,41 @@ export function EmailAccountFormDialog({
         <form className="grid gap-5" onSubmit={handleSubmit}>
           <div className="grid gap-5 md:grid-cols-2">
             <div className="grid gap-4 md:col-span-2 md:grid-cols-[1.2fr_0.8fr_1fr]">
+              <div className="grid gap-2 text-sm md:col-span-3">
+                <span className="text-[var(--muted)]">邮箱类型（必选）</span>
+                <div className="flex items-center gap-5">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="tier"
+                      value="free"
+                      checked={formState.tier === "free"}
+                      onChange={() =>
+                        setFormState((current) => ({
+                          ...current,
+                          tier: "free",
+                        }))
+                      }
+                    />
+                    <span>free</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="tier"
+                      value="plus"
+                      checked={formState.tier === "plus"}
+                      onChange={() =>
+                        setFormState((current) => ({
+                          ...current,
+                          tier: "plus",
+                        }))
+                      }
+                    />
+                    <span>plus</span>
+                  </label>
+                </div>
+              </div>
               <label className="grid gap-2 text-sm">
                 <span className="text-[var(--muted)]">账号名称</span>
                 <input

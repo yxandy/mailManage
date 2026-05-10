@@ -13,6 +13,7 @@ create table if not exists public.email_accounts (
   email_name text not null,
   source text,
   user_name text,
+  is_plus boolean not null default false,
   birthday date,
   registered_at timestamptz,
   registered_location text,
@@ -50,6 +51,9 @@ create index if not exists idx_email_accounts_email_name
 
 create index if not exists idx_email_accounts_user_name
   on public.email_accounts (user_name);
+
+create index if not exists idx_email_accounts_is_plus
+  on public.email_accounts (is_plus);
 
 create or replace function public.set_updated_at()
 returns trigger

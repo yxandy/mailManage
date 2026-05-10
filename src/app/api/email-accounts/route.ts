@@ -18,6 +18,10 @@ function parseBooleanFilter(value?: string): boolean | null {
   return null;
 }
 
+function parseIsPlusFilter(value?: string): boolean {
+  return value === "plus";
+}
+
 export async function GET(request: Request) {
   const session = await getCurrentSession();
 
@@ -29,6 +33,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const result = await listEmailAccounts({
       keyword: searchParams.get("keyword") ?? undefined,
+      isPlus: parseIsPlusFilter(searchParams.get("tier") ?? undefined),
       linked: parseBooleanFilter(searchParams.get("linked") ?? undefined),
       expired: parseBooleanFilter(searchParams.get("expired") ?? undefined),
       page: Number(searchParams.get("page") ?? "1"),
