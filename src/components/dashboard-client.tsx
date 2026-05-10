@@ -241,7 +241,7 @@ export function DashboardClient({
                   </p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-col items-start gap-3 lg:items-end">
                 <div className="inline-flex overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
                   <a
                     href={buildTierHref("free", searchParams)}
@@ -264,23 +264,25 @@ export function DashboardClient({
                     plus
                   </a>
                 </div>
-                <button
-                  type="button"
-                  className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)]"
-                  onClick={() => {
-                    setEditingRecord(null);
-                    setDialogMode("create");
-                  }}
-                >
-                  新增邮箱账号
-                </button>
-                <button
-                  type="button"
-                  className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm"
-                  onClick={handleLogout}
-                >
-                  退出登录
-                </button>
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)]"
+                    onClick={() => {
+                      setEditingRecord(null);
+                      setDialogMode("create");
+                    }}
+                  >
+                    新增邮箱账号
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm"
+                    onClick={handleLogout}
+                  >
+                    退出登录
+                  </button>
+                </div>
               </div>
             </div>
           </section>
