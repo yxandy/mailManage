@@ -31,27 +31,6 @@ function toStringArray(value: string | string[] | undefined): string[] {
   return value ? [value] : [];
 }
 
-function formatDate(value?: string | null, includeTime = false) {
-  if (!value) {
-    return "-";
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: includeTime ? "2-digit" : undefined,
-    minute: includeTime ? "2-digit" : undefined,
-    hour12: false,
-  }).format(date);
-}
-
 function formatDateOnly(value?: string | null) {
   if (!value) {
     return "-";
@@ -203,7 +182,7 @@ export function DashboardClient({
                       <p className="mt-1 text-2xl font-semibold">{stats.unlinkedCount}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-[var(--muted)]">已关联（总）</p>
+                      <p className="text-xs text-[var(--muted)]">已关联</p>
                       <p className="mt-1 text-2xl font-semibold">{stats.linkedCount}</p>
                     </div>
                   </div>
@@ -412,8 +391,6 @@ export function DashboardClient({
                   <tr className="text-left text-sm text-[var(--muted)]">
                     {[
                       "邮箱账号名称",
-                      "用户姓名",
-                      "用户生日",
                       "注册时间",
                       "注册时长",
                       "注册地点",
@@ -435,12 +412,6 @@ export function DashboardClient({
                           className={`border-b border-[var(--border)] px-4 py-4 font-medium ${getEmailNameColorClass(item)}`}
                         >
                           {item.email_name}
-                        </td>
-                        <td className="border-b border-[var(--border)] px-4 py-4">
-                          {item.user_name}
-                        </td>
-                        <td className="border-b border-[var(--border)] px-4 py-4">
-                          {formatDate(item.birthday)}
                         </td>
                         <td className="border-b border-[var(--border)] px-4 py-4">
                           {formatDateOnly(item.registered_at)}
@@ -484,7 +455,7 @@ export function DashboardClient({
                   ) : (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={7}
                         className="px-4 py-12 text-center text-sm text-[var(--muted)]"
                       >
                         当前没有符合条件的邮箱账号记录。
