@@ -226,7 +226,7 @@ export function DashboardClient({
                     href={buildTierHref("free", searchParams)}
                     className={`px-4 py-3 text-sm font-medium ${
                       tier === "free"
-                        ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                        ? "bg-[var(--primary)] !text-white"
                         : "text-[var(--foreground)]"
                     }`}
                   >
@@ -236,7 +236,7 @@ export function DashboardClient({
                     href={buildTierHref("plus", searchParams)}
                     className={`border-l border-[var(--border)] px-4 py-3 text-sm font-medium ${
                       tier === "plus"
-                        ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                        ? "bg-[var(--primary)] !text-white"
                         : "text-[var(--foreground)]"
                     }`}
                   >
