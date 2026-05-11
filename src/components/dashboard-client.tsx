@@ -117,6 +117,7 @@ export function DashboardClient({
   const [dialogMode, setDialogMode] = useState<"create" | "edit" | null>(null);
   const [editingRecord, setEditingRecord] = useState<EmailAccountRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [selectedDomains, setSelectedDomains] = useState<string[]>(() =>
     toStringArray(searchParams.domain),
   );
@@ -154,6 +155,18 @@ export function DashboardClient({
     await fetch("/api/logout", { method: "POST" });
     router.replace("/login");
     router.refresh();
+  }
+
+  async function handleCopyEmail(id: string, emailName: string) {
+    try {
+      await navigator.clipboard.writeText(emailName);
+      setCopiedId(id);
+      window.setTimeout(() => {
+        setCopiedId((current) => (current === id ? null : current));
+      }, 1200);
+    } catch {
+      window.alert("复制失败，请检查浏览器剪贴板权限。");
+    }
   }
 
   return (
@@ -411,7 +424,47 @@ export function DashboardClient({
                         <td
                           className={`border-b border-[var(--border)] px-4 py-4 font-medium ${getEmailNameColorClass(item)}`}
                         >
-                          {item.email_name}
+                          <div className="flex items-center gap-2">
+                            <span>{item.email_name}</span>
+                            <button
+                              type="button"
+                              aria-label={`复制邮箱 ${item.email_name}`}
+                              title="复制邮箱"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[#7C3AED] transition hover:border-[#7C3AED] hover:bg-[#F5F3FF]"
+                              onClick={() => handleCopyEmail(item.id, item.email_name)}
+                            >
+                              <svg
+                                width="15"
+                                height="15"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                xmlns="http://www.w3.org/2000/svg"
+                                aria-hidden="true"
+                              >
+                                <rect
+                                  x="9"
+                                  y="3"
+                                  width="12"
+                                  height="12"
+                                  rx="3"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                />
+                                <rect
+                                  x="3"
+                                  y="9"
+                                  width="12"
+                                  height="12"
+                                  rx="3"
+                                  stroke="currentColor"
+                                  strokeWidth="2"
+                                />
+                              </svg>
+                            </button>
+                            {copiedId === item.id ? (
+                              <span className="text-xs text-[var(--muted)]">已复制</span>
+                            ) : null}
+                          </div>
                         </td>
                         <td className="border-b border-[var(--border)] px-4 py-4">
                           {formatDateOnly(item.registered_at)}
