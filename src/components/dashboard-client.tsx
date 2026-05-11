@@ -430,7 +430,7 @@ export function DashboardClient({
                               type="button"
                               aria-label={`复制邮箱 ${item.email_name}`}
                               title="复制邮箱"
-                              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[#7C3AED] transition hover:border-[#7C3AED] hover:bg-[#F5F3FF]"
+                              className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-[var(--border)] bg-white text-[var(--primary)] transition hover:border-[var(--primary)] hover:bg-[color:color-mix(in_srgb,var(--primary)_12%,white)]"
                               onClick={() => handleCopyEmail(item.id, item.email_name)}
                             >
                               <svg
