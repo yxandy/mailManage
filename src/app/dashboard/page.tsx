@@ -6,6 +6,7 @@ import {
   listEmailAccounts,
 } from "@/lib/email-accounts/repository";
 import { normalizeDomainFilters } from "@/lib/email-accounts/schema";
+import { getCnyPrice } from "@/lib/system-settings/repository";
 
 type DashboardPageProps = {
   searchParams: Promise<{
@@ -58,7 +59,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const isPlus = parseIsPlusFilter(resolvedSearchParams.tier);
   const tier = isPlus ? "plus" : "free";
   const selectedDomains = parseDomainFilters(resolvedSearchParams.domain);
-  const [data, stats, domainOptions] = await Promise.all([
+  const [data, stats, domainOptions, cnyPrice] = await Promise.all([
     listEmailAccounts({
       keyword: resolvedSearchParams.keyword,
       domains: selectedDomains,
@@ -70,6 +71,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     }),
     getEmailAccountDashboardStats(isPlus),
     listEmailAccountDomainOptions(isPlus),
+    getCnyPrice(),
   ]);
 
   return (
@@ -83,6 +85,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       totalPages={data.totalPages}
       total={data.total}
       tier={tier}
+      cnyPrice={cnyPrice}
       searchParams={{
         keyword: resolvedSearchParams.keyword,
         domain: selectedDomains,

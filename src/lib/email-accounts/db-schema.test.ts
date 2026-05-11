@@ -25,3 +25,12 @@ test("email_accounts 表包含 is_plus 字段", () => {
     /create table if not exists public\.email_accounts[\s\S]*\n\s*is_plus\s+boolean\s+not null\s+default false,?/i,
   );
 });
+
+test("system_settings 表包含 cny_price 字段", () => {
+  const schemaSql = readFileSync(schemaFilePath, "utf8");
+
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.system_settings[\s\S]*\n\s*cny_price\s+numeric\(10,2\)\s+not null\s+default 34\.34,?/i,
+  );
+});

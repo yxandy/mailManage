@@ -15,6 +15,7 @@ type DashboardClientProps = {
   items: EmailAccountRecord[];
   stats: EmailAccountDashboardStats;
   tier: "free" | "plus";
+  cnyPrice: number;
   emailDomainOptions: string[];
   currentPage: number;
   pageSize: number;
@@ -106,6 +107,7 @@ export function DashboardClient({
   items,
   stats,
   tier,
+  cnyPrice,
   emailDomainOptions,
   currentPage,
   pageSize,
@@ -118,6 +120,7 @@ export function DashboardClient({
   const [editingRecord, setEditingRecord] = useState<EmailAccountRecord | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [isUpdatingCnyPrice, setIsUpdatingCnyPrice] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<string[]>(() =>
     toStringArray(searchParams.domain),
   );
@@ -166,6 +169,49 @@ export function DashboardClient({
       }, 1200);
     } catch {
       window.alert("复制失败，请检查浏览器剪贴板权限。");
+    }
+  }
+
+  async function handleUpdateCnyPrice() {
+    if (isUpdatingCnyPrice) {
+      return;
+    }
+
+    const input = window.prompt("请输入人民币数值（最多两位小数）", cnyPrice.toFixed(2));
+
+    if (input === null) {
+      return;
+    }
+
+    const nextValue = Number(input.trim());
+
+    if (!Number.isFinite(nextValue) || nextValue < 0) {
+      window.alert("请输入有效的非负数字。");
+      return;
+    }
+
+    const roundedValue = Math.round(nextValue * 100) / 100;
+    setIsUpdatingCnyPrice(true);
+
+    try {
+      const response = await fetch("/api/system-settings/cny-price", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ cnyPrice: roundedValue }),
+      });
+      const result = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "更新失败");
+      }
+
+      router.refresh();
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "更新失败");
+    } finally {
+      setIsUpdatingCnyPrice(false);
     }
   }
 
@@ -234,6 +280,15 @@ export function DashboardClient({
                 </div>
               </div>
               <div className="flex flex-col items-start gap-3 lg:items-end">
+                <button
+                  type="button"
+                  className="rounded-xl border border-[var(--border)] bg-white px-3 py-2 text-sm font-semibold text-[var(--foreground)]"
+                  onClick={handleUpdateCnyPrice}
+                  disabled={isUpdatingCnyPrice}
+                  title="点击修改人民币数值"
+                >
+                  ￥ {cnyPrice.toFixed(2)}
+                </button>
                 <div className="inline-flex overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
                   <a
                     href={buildTierHref("free", searchParams)}
