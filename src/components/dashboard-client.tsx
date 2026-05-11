@@ -461,9 +461,13 @@ export function DashboardClient({
                                 />
                               </svg>
                             </button>
-                            {copiedId === item.id ? (
-                              <span className="text-xs text-[var(--muted)]">已复制</span>
-                            ) : null}
+                            <span
+                              className={`inline-block w-10 text-xs text-[var(--muted)] transition-opacity ${
+                                copiedId === item.id ? "opacity-100" : "opacity-0"
+                              }`}
+                            >
+                              已复制
+                            </span>
                           </div>
                         </td>
                         <td className="border-b border-[var(--border)] px-4 py-4">
