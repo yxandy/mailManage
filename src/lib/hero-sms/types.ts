@@ -46,3 +46,53 @@ export type HeroSmsPurchaseErrorView = {
   details: string;
   minPrice?: string;
 };
+
+export type HeroSmsActivationRecord = {
+  id: string;
+  activation_id: string;
+  phone_number: string;
+  service_code: string;
+  service_name: string;
+  country_id: number;
+  country_name: string;
+  country_phone_code: number;
+  operator_code: string;
+  activation_cost: string;
+  currency_code: number;
+  can_get_another_sms: boolean;
+  activation_time: string;
+  activation_end_time: string;
+  activation_status: string | null;
+  sms_code: string | null;
+  sms_text: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type HeroSmsActivationView = {
+  id: string;
+  activationId: string;
+  phoneNumber: string;
+  serviceName: string;
+  countryName: string;
+  countryPhoneCode: number;
+  operatorCode: string;
+  activationCost: string;
+  currencyLabel: string;
+  canGetAnotherSms: boolean;
+  activationTime: string;
+  activationEndTime: string;
+  activationStatus: string;
+  activationStatusText: string;
+  smsCode: string | null;
+  smsText: string | null;
+  isActive: boolean;
+};
+
+export type HeroSmsActiveActivationItem = {
+  activationId?: string | number;
+  activationStatus?: string | number;
+  smsCode?: string | null;
+  smsText?: string | null;
+};

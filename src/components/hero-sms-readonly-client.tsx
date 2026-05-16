@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import type {
+  HeroSmsActivationView,
   HeroSmsBalanceView,
   HeroSmsCountryOption,
   HeroSmsOfferView,
@@ -15,6 +16,7 @@ type HeroSmsReadonlyClientProps = {
   initialBalance: HeroSmsBalanceView;
   initialServices: HeroSmsServiceOption[];
   initialCountries: HeroSmsCountryOption[];
+  initialActivations: HeroSmsActivationView[];
 };
 
 type OptionsResponse = {
@@ -34,6 +36,10 @@ type OperatorsResponse = {
 
 type PurchaseResponse = {
   result: HeroSmsPurchaseResultView;
+};
+
+type ActivationsResponse = {
+  items: HeroSmsActivationView[];
 };
 
 const CURRENCY_LABELS: Record<number, string> = {
@@ -139,6 +145,7 @@ export function HeroSmsReadonlyClient({
   initialBalance,
   initialServices,
   initialCountries,
+  initialActivations,
 }: HeroSmsReadonlyClientProps) {
   const [balance, setBalance] = useState(initialBalance.balance);
   const [services, setServices] = useState(initialServices);
@@ -154,10 +161,12 @@ export function HeroSmsReadonlyClient({
   const [purchasePrice, setPurchasePrice] = useState("");
   const [purchaseError, setPurchaseError] = useState("");
   const [purchaseResult, setPurchaseResult] = useState<HeroSmsPurchaseResultView | null>(null);
+  const [activations, setActivations] = useState(initialActivations);
   const [offer, setOffer] = useState<HeroSmsOfferView | null>(null);
   const [pageError, setPageError] = useState("");
   const [offerError, setOfferError] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRefreshingActivations, setIsRefreshingActivations] = useState(false);
   const [isLoadingOffer, setIsLoadingOffer] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [operators, setOperators] = useState<HeroSmsOperatorOption[]>([]);
@@ -289,6 +298,31 @@ export function HeroSmsReadonlyClient({
     }
   }
 
+  async function refreshActivations() {
+    if (isRefreshingActivations) {
+      return;
+    }
+
+    setIsRefreshingActivations(true);
+
+    try {
+      const response = await fetch("/api/hero-sms/activations/refresh", {
+        method: "POST",
+      });
+      const result = (await response.json()) as ActivationsResponse & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "刷新活动列表失败");
+      }
+
+      setActivations(result.items);
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : "刷新活动列表失败");
+    } finally {
+      setIsRefreshingActivations(false);
+    }
+  }
+
   async function handlePurchase() {
     if (isPurchasing) {
       return;
@@ -330,7 +364,9 @@ export function HeroSmsReadonlyClient({
         },
         body: JSON.stringify({
           service: selectedService,
+          serviceName: selectedServiceOption?.name ?? selectedService,
           country: Number(selectedCountry),
+          countryName: selectedCountryOption?.name ?? `国家 ${selectedCountry}`,
           maxPrice: normalizedPrice,
           operator: selectedOperator,
         }),
@@ -343,6 +379,7 @@ export function HeroSmsReadonlyClient({
 
       setPurchaseLocalStartedAt(Date.now());
       setPurchaseResult(result.result);
+      await refreshActivations();
     } catch (error) {
       setPurchaseError(error instanceof Error ? error.message : "购买失败");
     } finally {
@@ -763,6 +800,115 @@ export function HeroSmsReadonlyClient({
               </div>
             </div>
           ) : null}
+        </section>
+
+        <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">活动列表</p>
+              <h2 className="mt-2 text-2xl font-semibold">当前活动中的号码</h2>
+            </div>
+            <button
+              type="button"
+              className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-70"
+              onClick={refreshActivations}
+              disabled={isRefreshingActivations}
+            >
+              {isRefreshingActivations ? "刷新中..." : "刷新活动列表"}
+            </button>
+          </div>
+
+          {activations.length === 0 ? (
+            <div className="mt-5 rounded-[24px] border border-dashed border-[var(--border)] bg-white px-5 py-8 text-sm text-[var(--muted)]">
+              当前还没有活动中的 HeroSMS 号码。
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-4">
+              {activations.map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] p-5"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <button
+                        type="button"
+                        className="cursor-pointer text-left text-2xl font-semibold transition hover:opacity-75"
+                        onClick={() => copyText(item.phoneNumber, `activation-phone-${item.id}`)}
+                        title="点击复制号码"
+                      >
+                        {item.phoneNumber}
+                      </button>
+                      <p className="mt-2 text-sm text-[var(--muted)]">
+                        {copiedField === `activation-phone-${item.id}`
+                          ? "号码已复制"
+                          : `${item.serviceName} · ${item.countryName}（+${item.countryPhoneCode}）`}
+                      </p>
+                    </div>
+                    <div className="rounded-full border border-[var(--border)] bg-white px-3 py-2 text-sm font-medium">
+                      activationId: {item.activationId}
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
+                      <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                        当前状态
+                      </p>
+                      <p className="mt-2 text-xl font-semibold">{item.activationStatusText}</p>
+                    </div>
+                    <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
+                      <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                        实际价格
+                      </p>
+                      <p className="mt-2 text-xl font-semibold">
+                        {item.activationCost} {item.currencyLabel}
+                      </p>
+                    </div>
+                    <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
+                      <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                        运营商
+                      </p>
+                      <p className="mt-2 text-xl font-semibold">{item.operatorCode}</p>
+                    </div>
+                    <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
+                      <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                        可重复接收短信
+                      </p>
+                      <p className="mt-2 text-xl font-semibold">
+                        {item.canGetAnotherSms ? "是" : "否"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
+                    <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                      最新短信
+                    </p>
+                    {item.smsText ? (
+                      <button
+                        type="button"
+                        className="mt-2 cursor-pointer text-left text-sm leading-7 transition hover:opacity-75"
+                        onClick={() => copyText(item.smsText as string, `activation-sms-${item.id}`)}
+                        title="点击复制短信"
+                      >
+                        {item.smsText}
+                      </button>
+                    ) : (
+                      <p className="mt-2 text-sm text-[var(--muted)]">等待短信</p>
+                    )}
+                    {item.smsText ? (
+                      <p className="mt-2 text-xs text-[var(--muted)]">
+                        {copiedField === `activation-sms-${item.id}`
+                          ? "短信已复制"
+                          : "点击短信内容可复制"}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       </div>
     </main>

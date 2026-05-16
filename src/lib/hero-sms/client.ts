@@ -1,6 +1,8 @@
 import { getRequiredEnv } from "../env";
 
 import type {
+  HeroSmsActivationRecord,
+  HeroSmsActiveActivationItem,
   HeroSmsBalanceView,
   HeroSmsCountryOption,
   HeroSmsOfferView,
@@ -73,6 +75,11 @@ type HeroSmsStructuredErrorResponse = {
   info?: {
     min?: number;
   };
+};
+
+type HeroSmsActiveActivationsResponse = {
+  status?: string;
+  data?: HeroSmsActiveActivationItem[];
 };
 
 function getHeroSmsApiKey(): string {
@@ -272,4 +279,53 @@ export async function purchaseHeroSmsNumber(input: {
     activationEndTime: result.activationEndTime,
     activationOperator: result.activationOperator,
   };
+}
+
+export async function getHeroSmsActiveActivations(): Promise<HeroSmsActiveActivationItem[]> {
+  const response = await fetchCompatJson<HeroSmsActiveActivationsResponse>(
+    new URLSearchParams({
+      action: "getActiveActivations",
+    }),
+  );
+
+  if (response.status !== "success" || !Array.isArray(response.data)) {
+    throw new Error("HeroSMS 活动列表返回异常");
+  }
+
+  return response.data;
+}
+
+export async function syncHeroSmsActivations(
+  records: HeroSmsActivationRecord[],
+): Promise<Array<{ activationId: string; activationStatus: string | null; smsCode: string | null; smsText: string | null; isActive: boolean }>> {
+  const activeMap = new Map(
+    (await getHeroSmsActiveActivations())
+      .filter((item) => item.activationId !== undefined && item.activationId !== null)
+      .map((item) => [String(item.activationId), item]),
+  );
+
+  return records.map((record) => {
+    const current = activeMap.get(record.activation_id);
+
+    if (!current) {
+      return {
+        activationId: record.activation_id,
+        activationStatus: record.activation_status,
+        smsCode: record.sms_code,
+        smsText: record.sms_text,
+        isActive: false,
+      };
+    }
+
+    return {
+      activationId: record.activation_id,
+      activationStatus:
+        current.activationStatus === undefined || current.activationStatus === null
+          ? record.activation_status
+          : String(current.activationStatus),
+      smsCode: current.smsCode ?? record.sms_code,
+      smsText: current.smsText ?? record.sms_text,
+      isActive: true,
+    };
+  });
 }
