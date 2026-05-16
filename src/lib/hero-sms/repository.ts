@@ -1,6 +1,10 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-import type { HeroSmsActivationRecord, HeroSmsPurchaseResultView } from "./types";
+import type {
+  HeroSmsActivationRecord,
+  HeroSmsFavoriteRecord,
+  HeroSmsPurchaseResultView,
+} from "./types";
 
 export async function listActiveHeroSmsActivations(): Promise<HeroSmsActivationRecord[]> {
   const supabase = createSupabaseServerClient();
@@ -64,5 +68,43 @@ export async function updateHeroSmsActivationByActivationId(
 
   if (error) {
     throw new Error(`更新 HeroSMS 活动记录失败：${error.message}`);
+  }
+}
+
+export async function listHeroSmsFavorites(): Promise<HeroSmsFavoriteRecord[]> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("hero_sms_favorites")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`查询 HeroSMS 收藏失败：${error.message}`);
+  }
+
+  return (data ?? []) as HeroSmsFavoriteRecord[];
+}
+
+export async function createHeroSmsFavorite(input: {
+  serviceCode: string;
+  serviceName: string;
+  countryId: number;
+  countryName: string;
+  operatorCode: string;
+}): Promise<void> {
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase.from("hero_sms_favorites").upsert(
+    {
+      service_code: input.serviceCode,
+      service_name: input.serviceName,
+      country_id: input.countryId,
+      country_name: input.countryName,
+      operator_code: input.operatorCode,
+    },
+    { onConflict: "service_code,country_id,operator_code" },
+  );
+
+  if (error) {
+    throw new Error(`写入 HeroSMS 收藏失败：${error.message}`);
   }
 }

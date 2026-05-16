@@ -97,3 +97,23 @@ export type HeroSmsActiveActivationItem = {
   smsCode?: string | null;
   smsText?: string | null;
 };
+
+export type HeroSmsFavoriteRecord = {
+  id: string;
+  service_code: string;
+  service_name: string;
+  country_id: number;
+  country_name: string;
+  operator_code: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type HeroSmsFavoriteView = {
+  id: string;
+  serviceCode: string;
+  serviceName: string;
+  countryId: number;
+  countryName: string;
+  operatorCode: string;
+};

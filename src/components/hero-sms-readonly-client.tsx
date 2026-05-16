@@ -6,6 +6,7 @@ import type {
   HeroSmsActivationView,
   HeroSmsBalanceView,
   HeroSmsCountryOption,
+  HeroSmsFavoriteView,
   HeroSmsOfferView,
   HeroSmsOperatorOption,
   HeroSmsServiceOption,
@@ -17,6 +18,7 @@ type HeroSmsReadonlyClientProps = {
   initialServices: HeroSmsServiceOption[];
   initialCountries: HeroSmsCountryOption[];
   initialActivations: HeroSmsActivationView[];
+  initialFavorites: HeroSmsFavoriteView[];
 };
 
 type OptionsResponse = {
@@ -36,6 +38,10 @@ type OperatorsResponse = {
 
 type ActivationsResponse = {
   items: HeroSmsActivationView[];
+};
+
+type FavoritesResponse = {
+  items: HeroSmsFavoriteView[];
 };
 
 const CURRENCY_LABELS: Record<number, string> = {
@@ -132,13 +138,15 @@ export function HeroSmsReadonlyClient({
   initialServices,
   initialCountries,
   initialActivations,
+  initialFavorites,
 }: HeroSmsReadonlyClientProps) {
+  const initialFavorite = initialFavorites[0] ?? null;
   const [balance, setBalance] = useState(initialBalance.balance);
   const [services, setServices] = useState(initialServices);
   const [countries, setCountries] = useState(initialCountries);
-  const [selectedService, setSelectedService] = useState(initialServices[0]?.code ?? "");
+  const [selectedService, setSelectedService] = useState(initialFavorite?.serviceCode ?? "");
   const [selectedCountry, setSelectedCountry] = useState(
-    initialCountries[0] ? String(initialCountries[0].id) : "",
+    initialFavorite ? String(initialFavorite.countryId) : "",
   );
   const [serviceKeyword, setServiceKeyword] = useState("");
   const [countryKeyword, setCountryKeyword] = useState("");
@@ -147,6 +155,7 @@ export function HeroSmsReadonlyClient({
   const [purchasePrice, setPurchasePrice] = useState("");
   const [purchaseError, setPurchaseError] = useState("");
   const [activations, setActivations] = useState(initialActivations);
+  const [favorites, setFavorites] = useState(initialFavorites);
   const [offer, setOffer] = useState<HeroSmsOfferView | null>(null);
   const [pageError, setPageError] = useState("");
   const [offerError, setOfferError] = useState("");
@@ -155,9 +164,10 @@ export function HeroSmsReadonlyClient({
   const [isLoadingOffer, setIsLoadingOffer] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [operators, setOperators] = useState<HeroSmsOperatorOption[]>([]);
-  const [selectedOperator, setSelectedOperator] = useState("");
+  const [selectedOperator, setSelectedOperator] = useState(initialFavorite?.operatorCode ?? "");
   const [operatorError, setOperatorError] = useState("");
   const [isLoadingOperators, setIsLoadingOperators] = useState(false);
+  const [isSavingFavorite, setIsSavingFavorite] = useState(false);
   const [copiedField, setCopiedField] = useState("");
   const [countdownNow, setCountdownNow] = useState(Date.now());
   const [showDigitsOnly, setShowDigitsOnly] = useState(true);
@@ -168,7 +178,7 @@ export function HeroSmsReadonlyClient({
   const serviceMatches = filterServices(services, serviceKeyword);
   const countryMatches = filterCountries(countries, countryKeyword);
 
-  async function loadOperators(country: string) {
+  async function loadOperators(country: string, preferredOperator = "") {
     if (!country) {
       setOperators([]);
       setSelectedOperator("");
@@ -190,9 +200,18 @@ export function HeroSmsReadonlyClient({
       }
 
       setOperators(result.operators);
-      setSelectedOperator((current) =>
-        result.operators.some((item) => item.code === current) ? current : "",
-      );
+      setSelectedOperator((current) => {
+        const preferred =
+          preferredOperator && result.operators.some((item) => item.code === preferredOperator)
+            ? preferredOperator
+            : "";
+
+        if (preferred) {
+          return preferred;
+        }
+
+        return result.operators.some((item) => item.code === current) ? current : "";
+      });
     } catch (error) {
       setOperators([]);
       setSelectedOperator("");
@@ -261,20 +280,28 @@ export function HeroSmsReadonlyClient({
 
       const nextService =
         optionsResult.services.find((item) => item.code === selectedService)?.code ??
-        optionsResult.services[0]?.code ??
-        "";
-      const nextCountry =
-        optionsResult.countries.find((item) => String(item.id) === selectedCountry)?.id ??
-        optionsResult.countries[0]?.id;
+        (favorites[0]
+          ? optionsResult.services.find((item) => item.code === favorites[0].serviceCode)?.code ??
+            ""
+          : "");
+      const nextCountry = selectedCountry
+        ? optionsResult.countries.find((item) => String(item.id) === selectedCountry)?.id
+        : favorites[0]
+          ? optionsResult.countries.find((item) => item.id === favorites[0].countryId)?.id
+          : undefined;
+      const nextOperator =
+        selectedOperator ||
+        (favorites[0] ? favorites[0].operatorCode : "");
 
       setSelectedService(nextService);
       setSelectedCountry(nextCountry ? String(nextCountry) : "");
+      setSelectedOperator(nextOperator);
       setServiceKeyword("");
       setCountryKeyword("");
 
       await Promise.all([
         loadOffer(nextService, nextCountry ? String(nextCountry) : ""),
-        loadOperators(nextCountry ? String(nextCountry) : ""),
+        loadOperators(nextCountry ? String(nextCountry) : "", nextOperator),
       ]);
     } catch (error) {
       setPageError(error instanceof Error ? error.message : "刷新失败");
@@ -320,6 +347,57 @@ export function HeroSmsReadonlyClient({
       setBalance(result.balance);
     } catch (error) {
       setPurchaseError(error instanceof Error ? error.message : "刷新余额失败");
+    }
+  }
+
+  async function handleSaveFavorite() {
+    if (isSavingFavorite) {
+      return;
+    }
+
+    if (!selectedServiceOption) {
+      setPurchaseError("请先选择服务。");
+      return;
+    }
+
+    if (!selectedCountryOption) {
+      setPurchaseError("请先选择国家。");
+      return;
+    }
+
+    if (!selectedOperator) {
+      setPurchaseError("请选择具体运营商后再收藏。");
+      return;
+    }
+
+    setIsSavingFavorite(true);
+    setPurchaseError("");
+
+    try {
+      const response = await fetch("/api/hero-sms/favorites", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          serviceCode: selectedServiceOption.code,
+          serviceName: selectedServiceOption.name,
+          countryId: selectedCountryOption.id,
+          countryName: selectedCountryOption.name,
+          operatorCode: selectedOperator,
+        }),
+      });
+      const result = (await response.json()) as FavoritesResponse & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "收藏失败");
+      }
+
+      setFavorites(result.items);
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : "收藏失败");
+    } finally {
+      setIsSavingFavorite(false);
     }
   }
 
@@ -434,11 +512,39 @@ export function HeroSmsReadonlyClient({
     return Math.max(localDeadline - countdownNow, 0);
   }
 
+  async function applyFavorite(item: HeroSmsFavoriteView) {
+    setSelectedService(item.serviceCode);
+    setSelectedCountry(String(item.countryId));
+    setServiceKeyword("");
+    setCountryKeyword("");
+    setIsServicePickerOpen(false);
+    setIsCountryPickerOpen(false);
+
+    await Promise.all([
+      loadOffer(item.serviceCode, String(item.countryId)),
+      loadOperators(String(item.countryId), item.operatorCode),
+    ]);
+  }
+
+  useEffect(() => {
+    if (selectedService || selectedCountry || selectedOperator) {
+      return;
+    }
+
+    const firstFavorite = favorites[0];
+
+    if (!firstFavorite) {
+      return;
+    }
+
+    void applyFavorite(firstFavorite);
+  }, [favorites, selectedCountry, selectedOperator, selectedService]);
+
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="grid gap-5 lg:grid-cols-[1fr_auto_auto] lg:items-end">
             <div className="space-y-3">
               <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">
                 HeroSMS
@@ -448,7 +554,11 @@ export function HeroSmsReadonlyClient({
                 这一页集中完成选项选择、价格确认、购买动作和当前活动管理。
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="justify-self-center rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-4 text-center">
+              <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">账户余额</p>
+              <p className="mt-2 text-3xl font-semibold">{balance}</p>
+            </div>
+            <div className="flex flex-wrap items-center justify-self-end gap-3">
               <a
                 href="/dashboard"
                 className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm"
@@ -469,11 +579,41 @@ export function HeroSmsReadonlyClient({
 
         <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
           <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">
-            <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">账户余额</p>
-            <p className="mt-3 text-3xl font-semibold">{balance}</p>
-            <p className="mt-2 text-sm text-[var(--muted)]">
-              保留 HeroSMS 原始精度，不做四舍五入。
-            </p>
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">收藏</p>
+                <p className="mt-2 text-sm text-[var(--muted)]">
+                  常用的服务、国家、运营商组合会显示在这里。
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={handleSaveFavorite}
+                disabled={isSavingFavorite}
+              >
+                {isSavingFavorite ? "收藏中..." : "收藏当前选择"}
+              </button>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-3">
+              {favorites.length > 0 ? (
+                favorites.map((favorite) => (
+                  <button
+                    key={favorite.id}
+                    type="button"
+                    className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm transition hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                    onClick={() => {
+                      void applyFavorite(favorite);
+                    }}
+                  >
+                    {favorite.serviceName} / {favorite.countryName} / {favorite.operatorCode}
+                  </button>
+                ))
+              ) : (
+                <p className="text-sm text-[var(--muted)]">当前还没有收藏组合。</p>
+              )}
+            </div>
           </div>
 
           <div className="mt-6 flex items-center justify-between gap-4">

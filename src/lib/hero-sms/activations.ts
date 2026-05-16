@@ -1,4 +1,9 @@
-import type { HeroSmsActivationRecord, HeroSmsActivationView } from "./types";
+import type {
+  HeroSmsActivationRecord,
+  HeroSmsActivationView,
+  HeroSmsFavoriteRecord,
+  HeroSmsFavoriteView,
+} from "./types";
 
 const HERO_SMS_CURRENCY_LABELS: Record<number, string> = {
   840: "USD",
@@ -61,5 +66,18 @@ export function mapHeroSmsActivationRecordToView(
     smsText: record.sms_text,
     isActive: record.is_active,
     createdAt: record.created_at,
+  };
+}
+
+export function mapHeroSmsFavoriteRecordToView(
+  record: HeroSmsFavoriteRecord,
+): HeroSmsFavoriteView {
+  return {
+    id: record.id,
+    serviceCode: record.service_code,
+    serviceName: record.service_name,
+    countryId: record.country_id,
+    countryName: record.country_name,
+    operatorCode: record.operator_code,
   };
 }

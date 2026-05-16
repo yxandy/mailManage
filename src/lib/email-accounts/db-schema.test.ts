@@ -47,3 +47,16 @@ test("hero_sms_activations 表包含 activation_id 与活动状态字段", () =>
     /create table if not exists public\.hero_sms_activations[\s\S]*\n\s*is_active\s+boolean\s+not null\s+default true,?/i,
   );
 });
+
+test("hero_sms_favorites 表包含收藏唯一约束字段", () => {
+  const schemaSql = readFileSync(schemaFilePath, "utf8");
+
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.hero_sms_favorites[\s\S]*\n\s*service_code\s+text\s+not null,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.hero_sms_favorites[\s\S]*constraint hero_sms_favorites_unique_selection unique \(service_code, country_id, operator_code\)/i,
+  );
+});

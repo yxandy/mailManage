@@ -6,6 +6,7 @@ import {
   getHeroSmsCurrencyLabel,
   getHeroSmsStatusText,
   mapHeroSmsActivationRecordToView,
+  mapHeroSmsFavoriteRecordToView,
 } from "./activations.ts";
 
 test("HeroSMS 币种代码会转换为展示文案", () => {
@@ -71,4 +72,26 @@ test("HeroSMS 短信内容可提取数字部分", () => {
     extractDigitsFromSmsText("Your verification code is 123456, valid for 10 minutes."),
     "123456 10",
   );
+});
+
+test("HeroSMS 收藏记录会转换为前端视图", () => {
+  const result = mapHeroSmsFavoriteRecordToView({
+    id: "fav-id",
+    service_code: "tg",
+    service_name: "Telegram",
+    country_id: 16,
+    country_name: "英国",
+    operator_code: "any",
+    created_at: "2026-05-16T12:00:00.000Z",
+    updated_at: "2026-05-16T12:00:00.000Z",
+  });
+
+  assert.deepEqual(result, {
+    id: "fav-id",
+    serviceCode: "tg",
+    serviceName: "Telegram",
+    countryId: 16,
+    countryName: "英国",
+    operatorCode: "any",
+  });
 });
