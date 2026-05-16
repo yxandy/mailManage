@@ -89,25 +89,6 @@ function filterCountries(
     .slice(0, 12);
 }
 
-function formatBeijingTime(value: string): string {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return `${value}（北京时间）`;
-  }
-
-  return `${new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: false,
-  }).format(date)}（北京时间）`;
-}
-
 function getCurrencyLabel(code: number): string {
   return CURRENCY_LABELS[code] ?? `货币代码 ${code}`;
 }
@@ -938,11 +919,6 @@ export function HeroSmsReadonlyClient({
                           >
                             {item.phoneNumber}
                           </button>
-                          <p className="mt-1 text-xs text-[var(--muted)]">
-                            {copiedField === `activation-phone-${item.id}`
-                              ? "号码已复制"
-                              : "点击复制"}
-                          </p>
                         </td>
                         <td className="px-4 py-4 font-medium">
                           {item.activationCost} {item.currencyLabel}
@@ -951,12 +927,11 @@ export function HeroSmsReadonlyClient({
                           <p className="font-medium">
                             {remaining === null ? "待确认" : formatCountdown(remaining)}
                           </p>
-                          <p className="mt-1 text-xs text-[var(--muted)]">
-                            截止 {formatBeijingTime(item.activationEndTime)}
-                          </p>
                         </td>
                         <td className="px-4 py-4 font-medium">{item.activationStatusText}</td>
-                        <td className="px-4 py-4 font-medium">{item.operatorCode}</td>
+                        <td className="px-4 py-4 font-medium">
+                          {item.operatorCode || "任意运营商"}
+                        </td>
                         <td className="px-4 py-4 font-medium">
                           {item.canGetAnotherSms ? "是" : "否"}
                         </td>
@@ -973,11 +948,6 @@ export function HeroSmsReadonlyClient({
                               >
                                 {smsDisplayText}
                               </button>
-                              <p className="mt-1 text-xs text-[var(--muted)]">
-                                {copiedField === `activation-sms-${item.id}`
-                                  ? "短信已复制"
-                                  : "点击复制"}
-                              </p>
                             </>
                           ) : (
                             <span className="text-[var(--muted)]">等待短信</span>
