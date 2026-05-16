@@ -6,7 +6,7 @@ import {
   mapHeroSmsOffer,
   mapHeroSmsServices,
   parseHeroSmsBalance,
-} from "./client.ts";
+} from "./transformers.ts";
 
 test("HeroSMS 余额保留原始精度", () => {
   const result = parseHeroSmsBalance("ACCESS_BALANCE:100.5001");
