@@ -44,6 +44,8 @@ type FavoritesResponse = {
   items: HeroSmsFavoriteView[];
 };
 
+type ActivationAction = "cancel" | "finish";
+
 const CURRENCY_LABELS: Record<number, string> = {
   840: "USD",
 };
@@ -149,6 +151,7 @@ export function HeroSmsReadonlyClient({
   const [operatorError, setOperatorError] = useState("");
   const [isLoadingOperators, setIsLoadingOperators] = useState(false);
   const [isSavingFavorite, setIsSavingFavorite] = useState(false);
+  const [actioningActivationId, setActioningActivationId] = useState("");
   const [copiedField, setCopiedField] = useState("");
   const [countdownNow, setCountdownNow] = useState(Date.now());
   const [showDigitsOnly, setShowDigitsOnly] = useState(true);
@@ -486,6 +489,44 @@ export function HeroSmsReadonlyClient({
     const localDeadline = localCreatedAt + durationMs;
 
     return Math.max(localDeadline - countdownNow, 0);
+  }
+
+  async function handleActivationAction(item: HeroSmsActivationView, action: ActivationAction) {
+    if (actioningActivationId) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      action === "cancel" ? "确认取消这条号码吗？" : "确认完成这条号码吗？",
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setActioningActivationId(item.id);
+    setPurchaseError("");
+
+    try {
+      const response = await fetch(`/api/hero-sms/activations/${item.id}/action`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action }),
+      });
+      const result = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "操作失败");
+      }
+
+      await Promise.all([refreshActivations(), refreshBalanceOnly()]);
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : "操作失败");
+    } finally {
+      setActioningActivationId("");
+    }
   }
 
   async function applyFavorite(item: HeroSmsFavoriteView) {
@@ -897,11 +938,13 @@ export function HeroSmsReadonlyClient({
                     <th className="px-4 py-3 font-medium">运营商</th>
                     <th className="px-4 py-3 font-medium">可重复接收短信</th>
                     <th className="px-4 py-3 font-medium">最新短信</th>
+                    <th className="px-4 py-3 font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {activations.map((item) => {
                     const remaining = getActivationRemainingMs(item);
+                    const action: ActivationAction = item.smsText ? "finish" : "cancel";
                     const smsDisplayText = item.smsText
                       ? showDigitsOnly
                         ? extractDigitsFromSmsText(item.smsText) || item.smsText
@@ -952,6 +995,20 @@ export function HeroSmsReadonlyClient({
                           ) : (
                             <span className="text-[var(--muted)]">等待短信</span>
                           )}
+                        </td>
+                        <td className="px-4 py-4">
+                          <button
+                            type="button"
+                            className="rounded-2xl border border-[var(--border)] px-4 py-2 text-sm font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
+                            onClick={() => void handleActivationAction(item, action)}
+                            disabled={actioningActivationId === item.id}
+                          >
+                            {actioningActivationId === item.id
+                              ? "处理中..."
+                              : action === "cancel"
+                                ? "取消"
+                                : "完成"}
+                          </button>
                         </td>
                       </tr>
                     );

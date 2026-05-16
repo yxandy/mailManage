@@ -295,6 +295,34 @@ export async function getHeroSmsActiveActivations(): Promise<HeroSmsActiveActiva
   return response.data;
 }
 
+async function runHeroSmsActivationAction(
+  action: "cancelActivation" | "finishActivation",
+  activationId: string,
+): Promise<void> {
+  const { text, json } = await fetchCompatAny(
+    new URLSearchParams({
+      action,
+      activationId,
+    }),
+  );
+
+  if (json?.title) {
+    throw new Error(`${json.title}${json.details ? `：${json.details}` : ""}`);
+  }
+
+  if (text && text !== "OK") {
+    throw new Error(`HeroSMS ${action} 返回异常：${text}`);
+  }
+}
+
+export async function cancelHeroSmsActivation(activationId: string): Promise<void> {
+  await runHeroSmsActivationAction("cancelActivation", activationId);
+}
+
+export async function finishHeroSmsActivation(activationId: string): Promise<void> {
+  await runHeroSmsActivationAction("finishActivation", activationId);
+}
+
 export async function syncHeroSmsActivations(
   records: HeroSmsActivationRecord[],
 ): Promise<Array<{ activationId: string; activationStatus: string | null; smsCode: string | null; smsText: string | null; isActive: boolean }>> {
