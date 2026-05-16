@@ -29,6 +29,16 @@ export function getHeroSmsStatusText(status: string | null, smsText: string | nu
   return HERO_SMS_STATUS_LABELS[status] ?? `状态 ${status}`;
 }
 
+export function extractDigitsFromSmsText(smsText: string): string {
+  const groups = smsText.match(/\d+/g);
+
+  if (!groups || groups.length === 0) {
+    return "";
+  }
+
+  return groups.join(" ");
+}
+
 export function mapHeroSmsActivationRecordToView(
   record: HeroSmsActivationRecord,
 ): HeroSmsActivationView {
@@ -50,5 +60,6 @@ export function mapHeroSmsActivationRecordToView(
     smsCode: record.sms_code,
     smsText: record.sms_text,
     isActive: record.is_active,
+    createdAt: record.created_at,
   };
 }

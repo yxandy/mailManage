@@ -88,6 +88,7 @@ export type HeroSmsActivationView = {
   smsCode: string | null;
   smsText: string | null;
   isActive: boolean;
+  createdAt: string;
 };
 
 export type HeroSmsActiveActivationItem = {

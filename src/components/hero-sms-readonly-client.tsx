@@ -10,6 +10,7 @@ import type {
   HeroSmsOperatorOption,
   HeroSmsServiceOption,
 } from "@/lib/hero-sms/types";
+import { extractDigitsFromSmsText } from "@/lib/hero-sms/activations";
 
 type HeroSmsReadonlyClientProps = {
   initialBalance: HeroSmsBalanceView;
@@ -107,14 +108,23 @@ function getCurrencyLabel(code: number): string {
 
 function formatCountdown(ms: number): string {
   if (ms <= 0) {
-    return "00:00";
+    return "0秒";
   }
 
   const totalSeconds = Math.floor(ms / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
 
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  if (hours > 0) {
+    return `${hours}时 ${String(minutes).padStart(2, "0")}分 ${String(seconds).padStart(2, "0")}秒`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}分 ${String(seconds).padStart(2, "0")}秒`;
+  }
+
+  return `${seconds}秒`;
 }
 
 export function HeroSmsReadonlyClient({
@@ -150,6 +160,7 @@ export function HeroSmsReadonlyClient({
   const [isLoadingOperators, setIsLoadingOperators] = useState(false);
   const [copiedField, setCopiedField] = useState("");
   const [countdownNow, setCountdownNow] = useState(Date.now());
+  const [showDigitsOnly, setShowDigitsOnly] = useState(true);
 
   const selectedServiceOption = services.find((service) => service.code === selectedService) ?? null;
   const selectedCountryOption =
@@ -406,16 +417,21 @@ export function HeroSmsReadonlyClient({
   function getActivationRemainingMs(item: HeroSmsActivationView): number | null {
     const activationStart = new Date(item.activationTime).getTime();
     const activationEnd = new Date(item.activationEndTime).getTime();
+    const localCreatedAt = new Date(item.createdAt).getTime();
 
     if (
       Number.isNaN(activationStart) ||
       Number.isNaN(activationEnd) ||
+      Number.isNaN(localCreatedAt) ||
       activationEnd <= activationStart
     ) {
       return null;
     }
 
-    return Math.max(activationEnd - countdownNow, 0);
+    const durationMs = activationEnd - activationStart;
+    const localDeadline = localCreatedAt + durationMs;
+
+    return Math.max(localDeadline - countdownNow, 0);
   }
 
   return (
@@ -728,14 +744,24 @@ export function HeroSmsReadonlyClient({
               <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">活动列表</p>
               <h2 className="mt-2 text-2xl font-semibold">当前活动中的号码</h2>
             </div>
-            <button
-              type="button"
-              className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-70"
-              onClick={refreshActivations}
-              disabled={isRefreshingActivations}
-            >
-              {isRefreshingActivations ? "刷新中..." : "刷新活动列表"}
-            </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-[var(--muted)]">
+                <input
+                  type="checkbox"
+                  checked={showDigitsOnly}
+                  onChange={(event) => setShowDigitsOnly(event.target.checked)}
+                />
+                只显示数字
+              </label>
+              <button
+                type="button"
+                className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={refreshActivations}
+                disabled={isRefreshingActivations}
+              >
+                {isRefreshingActivations ? "刷新中..." : "刷新活动列表"}
+              </button>
+            </div>
           </div>
 
           {activations.length === 0 ? (
@@ -759,6 +785,11 @@ export function HeroSmsReadonlyClient({
                 <tbody>
                   {activations.map((item) => {
                     const remaining = getActivationRemainingMs(item);
+                    const smsDisplayText = item.smsText
+                      ? showDigitsOnly
+                        ? extractDigitsFromSmsText(item.smsText) || item.smsText
+                        : item.smsText
+                      : "";
 
                     return (
                       <tr key={item.id} className="border-t border-[var(--border)] align-top">
@@ -800,11 +831,11 @@ export function HeroSmsReadonlyClient({
                                 type="button"
                                 className="cursor-pointer text-left leading-7 transition hover:opacity-75"
                                 onClick={() =>
-                                  copyText(item.smsText as string, `activation-sms-${item.id}`)
+                                  copyText(smsDisplayText, `activation-sms-${item.id}`)
                                 }
                                 title="点击复制短信"
                               >
-                                {item.smsText}
+                                {smsDisplayText}
                               </button>
                               <p className="mt-1 text-xs text-[var(--muted)]">
                                 {copiedField === `activation-sms-${item.id}`

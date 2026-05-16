@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  extractDigitsFromSmsText,
   getHeroSmsCurrencyLabel,
   getHeroSmsStatusText,
   mapHeroSmsActivationRecordToView,
@@ -57,9 +58,17 @@ test("HeroSMS 活动记录会转换为前端视图", () => {
     smsCode: null,
     smsText: null,
     isActive: true,
+    createdAt: "2026-05-16T12:00:00.000Z",
   });
 });
 
 test("HeroSMS 数字状态码也会映射为中文文案", () => {
   assert.equal(getHeroSmsStatusText("4", null), "已收到短信");
+});
+
+test("HeroSMS 短信内容可提取数字部分", () => {
+  assert.equal(
+    extractDigitsFromSmsText("Your verification code is 123456, valid for 10 minutes."),
+    "123456 10",
+  );
 });
