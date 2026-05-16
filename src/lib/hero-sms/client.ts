@@ -4,6 +4,8 @@ import type {
   HeroSmsBalanceView,
   HeroSmsCountryOption,
   HeroSmsOfferView,
+  HeroSmsPurchaseErrorView,
+  HeroSmsPurchaseResultView,
   HeroSmsServiceOption,
 } from "./types";
 import {
@@ -50,6 +52,27 @@ type HeroSmsOffersResponse = {
   data?: Record<string, Record<string, HeroSmsOfferBucket>>;
 };
 
+type HeroSmsPurchaseSuccessResponse = {
+  activationId?: string;
+  phoneNumber?: string;
+  activationCost?: number;
+  currency?: number;
+  countryCode?: number;
+  countryPhoneCode?: number;
+  canGetAnotherSms?: boolean;
+  activationTime?: string;
+  activationEndTime?: string;
+  activationOperator?: string;
+};
+
+type HeroSmsStructuredErrorResponse = {
+  title?: string;
+  details?: string;
+  info?: {
+    min?: number;
+  };
+};
+
 function getHeroSmsApiKey(): string {
   return getRequiredEnv("HERO_SMS_API_KEY");
 }
@@ -77,6 +100,24 @@ async function fetchCompatJson<T>(params: URLSearchParams): Promise<T> {
     return JSON.parse(text) as T;
   } catch {
     throw new Error(`HeroSMS 返回了无法解析的 JSON：${text}`);
+  }
+}
+
+async function fetchCompatAny(
+  params: URLSearchParams,
+): Promise<{ text: string; json: HeroSmsStructuredErrorResponse | null }> {
+  const text = await fetchCompatText(params);
+
+  try {
+    return {
+      text,
+      json: JSON.parse(text) as HeroSmsStructuredErrorResponse,
+    };
+  } catch {
+    return {
+      text,
+      json: null,
+    };
   }
 }
 
@@ -148,4 +189,66 @@ export async function getHeroSmsOffer(
   );
 
   return mapHeroSmsOffer(response, service, country);
+}
+
+export async function purchaseHeroSmsNumber(input: {
+  service: string;
+  country: number;
+  maxPrice: string;
+}): Promise<HeroSmsPurchaseResultView> {
+  const { text, json } = await fetchCompatAny(
+    new URLSearchParams({
+      action: "getNumberV2",
+      service: input.service,
+      country: String(input.country),
+      maxPrice: input.maxPrice,
+    }),
+  );
+
+  if (json && json.title) {
+    const error: HeroSmsPurchaseErrorView = {
+      title: json.title,
+      details: json.details ?? "",
+      minPrice: typeof json.info?.min === "number" ? String(json.info.min) : undefined,
+    };
+    const minInfo = error.minPrice ? `，最低可接受价格：${error.minPrice}` : "";
+
+    throw new Error(`${error.title}${error.details ? `：${error.details}` : ""}${minInfo}`);
+  }
+
+  let result: HeroSmsPurchaseSuccessResponse;
+
+  try {
+    result = JSON.parse(text) as HeroSmsPurchaseSuccessResponse;
+  } catch {
+    throw new Error(`HeroSMS 返回了无法解析的购买结果：${text}`);
+  }
+
+  if (
+    !result.activationId ||
+    !result.phoneNumber ||
+    typeof result.activationCost !== "number" ||
+    typeof result.currency !== "number" ||
+    typeof result.countryCode !== "number" ||
+    typeof result.countryPhoneCode !== "number" ||
+    typeof result.canGetAnotherSms !== "boolean" ||
+    !result.activationTime ||
+    !result.activationEndTime ||
+    !result.activationOperator
+  ) {
+    throw new Error(`HeroSMS 返回了不完整的购买结果：${text}`);
+  }
+
+  return {
+    activationId: result.activationId,
+    phoneNumber: result.phoneNumber,
+    activationCost: String(result.activationCost),
+    currency: result.currency,
+    countryCode: result.countryCode,
+    countryPhoneCode: result.countryPhoneCode,
+    canGetAnotherSms: result.canGetAnotherSms,
+    activationTime: result.activationTime,
+    activationEndTime: result.activationEndTime,
+    activationOperator: result.activationOperator,
+  };
 }

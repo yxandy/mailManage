@@ -22,3 +22,22 @@ export type HeroSmsOfferView = {
   physicalCount: number;
   defaultPriceCount: number;
 };
+
+export type HeroSmsPurchaseResultView = {
+  activationId: string;
+  phoneNumber: string;
+  activationCost: string;
+  currency: number;
+  countryCode: number;
+  countryPhoneCode: number;
+  canGetAnotherSms: boolean;
+  activationTime: string;
+  activationEndTime: string;
+  activationOperator: string;
+};
+
+export type HeroSmsPurchaseErrorView = {
+  title: string;
+  details: string;
+  minPrice?: string;
+};

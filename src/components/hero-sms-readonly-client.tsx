@@ -6,6 +6,7 @@ import type {
   HeroSmsBalanceView,
   HeroSmsCountryOption,
   HeroSmsOfferView,
+  HeroSmsPurchaseResultView,
   HeroSmsServiceOption,
 } from "@/lib/hero-sms/types";
 
@@ -24,6 +25,10 @@ type BalanceResponse = HeroSmsBalanceView;
 
 type OfferResponse = {
   offer: HeroSmsOfferView | null;
+};
+
+type PurchaseResponse = {
+  result: HeroSmsPurchaseResultView;
 };
 
 function normalizeSearchText(value: string): string {
@@ -83,11 +88,15 @@ export function HeroSmsReadonlyClient({
   const [countryKeyword, setCountryKeyword] = useState("");
   const [isServicePickerOpen, setIsServicePickerOpen] = useState(false);
   const [isCountryPickerOpen, setIsCountryPickerOpen] = useState(false);
+  const [purchasePrice, setPurchasePrice] = useState("");
+  const [purchaseError, setPurchaseError] = useState("");
+  const [purchaseResult, setPurchaseResult] = useState<HeroSmsPurchaseResultView | null>(null);
   const [offer, setOffer] = useState<HeroSmsOfferView | null>(null);
   const [pageError, setPageError] = useState("");
   const [offerError, setOfferError] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingOffer, setIsLoadingOffer] = useState(false);
+  const [isPurchasing, setIsPurchasing] = useState(false);
 
   const selectedServiceOption = services.find((service) => service.code === selectedService) ?? null;
   const selectedCountryOption =
@@ -170,6 +179,65 @@ export function HeroSmsReadonlyClient({
       setPageError(error instanceof Error ? error.message : "刷新失败");
     } finally {
       setIsRefreshing(false);
+    }
+  }
+
+  async function handlePurchase() {
+    if (isPurchasing) {
+      return;
+    }
+
+    if (!selectedService) {
+      setPurchaseError("请先选择服务。");
+      return;
+    }
+
+    if (!selectedCountry) {
+      setPurchaseError("请先选择国家。");
+      return;
+    }
+
+    const normalizedPrice = purchasePrice.trim();
+
+    if (!normalizedPrice) {
+      setPurchaseError("请输入购置价格。");
+      return;
+    }
+
+    const numericPrice = Number(normalizedPrice);
+
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+      setPurchaseError("请输入有效的正数价格。");
+      return;
+    }
+
+    setIsPurchasing(true);
+    setPurchaseError("");
+    setPurchaseResult(null);
+
+    try {
+      const response = await fetch("/api/hero-sms/purchase", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          service: selectedService,
+          country: Number(selectedCountry),
+          maxPrice: normalizedPrice,
+        }),
+      });
+      const result = (await response.json()) as PurchaseResponse & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "购买失败");
+      }
+
+      setPurchaseResult(result.result);
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : "购买失败");
+    } finally {
+      setIsPurchasing(false);
     }
   }
 
@@ -411,6 +479,106 @@ export function HeroSmsReadonlyClient({
                 <p className="mt-2 text-sm text-[var(--muted)]">
                   实体 {offer.physicalCount} / 默认价位 {offer.defaultPriceCount}
                 </p>
+              </div>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-3">
+              <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">购买验证</p>
+              <h2 className="text-2xl font-semibold">购买 1 条号码</h2>
+              <p className="text-sm leading-7 text-[var(--muted)]">
+                当前只做单次购买验证，不落库，不做活动列表。
+              </p>
+            </div>
+            <div className="flex w-full flex-col gap-3 lg:max-w-xl lg:flex-row lg:items-end">
+              <label className="grid flex-1 gap-2 text-sm">
+                <span className="text-[var(--muted)]">购置价格</span>
+                <input
+                  value={purchasePrice}
+                  onChange={(event) => setPurchasePrice(event.target.value)}
+                  placeholder={
+                    offer ? `例如 ${offer.minPrice}` : "请输入你希望的最高购置价格"
+                  }
+                  className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                />
+              </label>
+              <button
+                type="button"
+                className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={handlePurchase}
+                disabled={isPurchasing}
+              >
+                {isPurchasing ? "购买中..." : "购买 1 条号码"}
+              </button>
+            </div>
+          </div>
+
+          {purchaseError ? (
+            <p className="mt-5 rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
+              {purchaseError}
+            </p>
+          ) : null}
+
+          {purchaseResult ? (
+            <div className="mt-5 rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] p-5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.25em] text-[var(--muted)]">
+                    本次购买结果
+                  </p>
+                  <h3 className="mt-2 text-2xl font-semibold">{purchaseResult.phoneNumber}</h3>
+                </div>
+                <span className="rounded-full border border-[var(--border)] bg-white px-3 py-2 text-sm font-medium">
+                  activationId: {purchaseResult.activationId}
+                </span>
+              </div>
+
+              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                    实际价格
+                  </p>
+                  <p className="mt-2 text-xl font-semibold">{purchaseResult.activationCost}</p>
+                </div>
+                <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                    到期时间
+                  </p>
+                  <p className="mt-2 text-sm font-semibold break-all">
+                    {purchaseResult.activationEndTime}
+                  </p>
+                </div>
+                <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                    运营商
+                  </p>
+                  <p className="mt-2 text-xl font-semibold">{purchaseResult.activationOperator}</p>
+                </div>
+                <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                    币种
+                  </p>
+                  <p className="mt-2 text-xl font-semibold">{purchaseResult.currency}</p>
+                </div>
+                <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                    国家代码
+                  </p>
+                  <p className="mt-2 text-xl font-semibold">
+                    {purchaseResult.countryCode} / +{purchaseResult.countryPhoneCode}
+                  </p>
+                </div>
+                <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                    可重复接收短信
+                  </p>
+                  <p className="mt-2 text-xl font-semibold">
+                    {purchaseResult.canGetAnotherSms ? "是" : "否"}
+                  </p>
+                </div>
               </div>
             </div>
           ) : null}
