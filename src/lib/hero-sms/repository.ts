@@ -99,7 +99,7 @@ export async function createHeroSmsFavorite(input: {
       service_name: input.serviceName,
       country_id: input.countryId,
       country_name: input.countryName,
-      operator_code: input.operatorCode,
+      operator_code: input.operatorCode || null,
     },
     { onConflict: "service_code,country_id,operator_code" },
   );

@@ -365,11 +365,6 @@ export function HeroSmsReadonlyClient({
       return;
     }
 
-    if (!selectedOperator) {
-      setPurchaseError("请选择具体运营商后再收藏。");
-      return;
-    }
-
     setIsSavingFavorite(true);
     setPurchaseError("");
 
@@ -607,7 +602,8 @@ export function HeroSmsReadonlyClient({
                       void applyFavorite(favorite);
                     }}
                   >
-                    {favorite.serviceName} / {favorite.countryName} / {favorite.operatorCode}
+                    {favorite.serviceName} / {favorite.countryName} /{" "}
+                    {favorite.operatorCode || "任意运营商"}
                   </button>
                 ))
               ) : (

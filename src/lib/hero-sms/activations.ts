@@ -78,6 +78,6 @@ export function mapHeroSmsFavoriteRecordToView(
     serviceName: record.service_name,
     countryId: record.country_id,
     countryName: record.country_name,
-    operatorCode: record.operator_code,
+    operatorCode: record.operator_code ?? "",
   };
 }

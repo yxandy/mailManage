@@ -57,10 +57,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "缺少有效的 countryId 参数" }, { status: 400 });
     }
 
-    if (!operatorCode) {
-      return NextResponse.json({ error: "缺少 operatorCode 参数" }, { status: 400 });
-    }
-
     await createHeroSmsFavorite({
       serviceCode,
       serviceName,
