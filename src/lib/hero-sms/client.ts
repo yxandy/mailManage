@@ -302,7 +302,7 @@ async function runHeroSmsActivationAction(
   const { text, json } = await fetchCompatAny(
     new URLSearchParams({
       action,
-      activationId,
+      id: activationId,
     }),
   );
 
