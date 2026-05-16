@@ -312,6 +312,12 @@ export function DashboardClient({
                   </a>
                 </div>
                 <div className="flex flex-wrap gap-3">
+                  <a
+                    href="/dashboard/hero-sms"
+                    className="rounded-2xl border border-[var(--border)] bg-white px-5 py-3 text-sm font-semibold text-[var(--foreground)]"
+                  >
+                    HeroSMS 验证页
+                  </a>
                   <button
                     type="button"
                     className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)]"
