@@ -8,7 +8,6 @@ import type {
   HeroSmsCountryOption,
   HeroSmsOfferView,
   HeroSmsOperatorOption,
-  HeroSmsPurchaseResultView,
   HeroSmsServiceOption,
 } from "@/lib/hero-sms/types";
 
@@ -32,10 +31,6 @@ type OfferResponse = {
 
 type OperatorsResponse = {
   operators: HeroSmsOperatorOption[];
-};
-
-type PurchaseResponse = {
-  result: HeroSmsPurchaseResultView;
 };
 
 type ActivationsResponse = {
@@ -122,25 +117,6 @@ function formatCountdown(ms: number): string {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function getActivationDurationMs(result: HeroSmsPurchaseResultView | null): number | null {
-  if (!result) {
-    return null;
-  }
-
-  const activationStart = new Date(result.activationTime).getTime();
-  const activationEnd = new Date(result.activationEndTime).getTime();
-
-  if (
-    Number.isNaN(activationStart) ||
-    Number.isNaN(activationEnd) ||
-    activationEnd <= activationStart
-  ) {
-    return null;
-  }
-
-  return activationEnd - activationStart;
-}
-
 export function HeroSmsReadonlyClient({
   initialBalance,
   initialServices,
@@ -160,7 +136,6 @@ export function HeroSmsReadonlyClient({
   const [isCountryPickerOpen, setIsCountryPickerOpen] = useState(false);
   const [purchasePrice, setPurchasePrice] = useState("");
   const [purchaseError, setPurchaseError] = useState("");
-  const [purchaseResult, setPurchaseResult] = useState<HeroSmsPurchaseResultView | null>(null);
   const [activations, setActivations] = useState(initialActivations);
   const [offer, setOffer] = useState<HeroSmsOfferView | null>(null);
   const [pageError, setPageError] = useState("");
@@ -175,7 +150,6 @@ export function HeroSmsReadonlyClient({
   const [isLoadingOperators, setIsLoadingOperators] = useState(false);
   const [copiedField, setCopiedField] = useState("");
   const [countdownNow, setCountdownNow] = useState(Date.now());
-  const [purchaseLocalStartedAt, setPurchaseLocalStartedAt] = useState<number | null>(null);
 
   const selectedServiceOption = services.find((service) => service.code === selectedService) ?? null;
   const selectedCountryOption =
@@ -323,6 +297,21 @@ export function HeroSmsReadonlyClient({
     }
   }
 
+  async function refreshBalanceOnly() {
+    try {
+      const response = await fetch("/api/hero-sms/balance");
+      const result = (await response.json()) as BalanceResponse & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "刷新余额失败");
+      }
+
+      setBalance(result.balance);
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : "刷新余额失败");
+    }
+  }
+
   async function handlePurchase() {
     if (isPurchasing) {
       return;
@@ -354,7 +343,6 @@ export function HeroSmsReadonlyClient({
 
     setIsPurchasing(true);
     setPurchaseError("");
-    setPurchaseResult(null);
 
     try {
       const response = await fetch("/api/hero-sms/purchase", {
@@ -371,15 +359,13 @@ export function HeroSmsReadonlyClient({
           operator: selectedOperator,
         }),
       });
-      const result = (await response.json()) as PurchaseResponse & { error?: string };
+      const result = (await response.json()) as { error?: string };
 
       if (!response.ok) {
         throw new Error(result.error ?? "购买失败");
       }
 
-      setPurchaseLocalStartedAt(Date.now());
-      setPurchaseResult(result.result);
-      await refreshActivations();
+      await Promise.all([refreshActivations(), refreshBalanceOnly()]);
     } catch (error) {
       setPurchaseError(error instanceof Error ? error.message : "购买失败");
     } finally {
@@ -417,14 +403,20 @@ export function HeroSmsReadonlyClient({
     };
   }, []);
 
-  const purchaseActivatedAt =
-    getActivationDurationMs(purchaseResult);
-  const purchaseDeadline =
-    purchaseActivatedAt === null || purchaseLocalStartedAt === null
-      ? null
-      : purchaseLocalStartedAt + purchaseActivatedAt;
-  const countdownRemaining =
-    purchaseDeadline === null ? null : Math.max(purchaseDeadline - countdownNow, 0);
+  function getActivationRemainingMs(item: HeroSmsActivationView): number | null {
+    const activationStart = new Date(item.activationTime).getTime();
+    const activationEnd = new Date(item.activationEndTime).getTime();
+
+    if (
+      Number.isNaN(activationStart) ||
+      Number.isNaN(activationEnd) ||
+      activationEnd <= activationStart
+    ) {
+      return null;
+    }
+
+    return Math.max(activationEnd - countdownNow, 0);
+  }
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-8">
@@ -437,7 +429,7 @@ export function HeroSmsReadonlyClient({
               </p>
               <h1 className="text-3xl font-semibold">短信接码验证</h1>
               <p className="text-sm leading-7 text-[var(--muted)]">
-                这一页先验证余额、选项、报价和单次购买结果，暂时不做活动列表。
+                这一页集中完成选项选择、价格确认、购买动作和当前活动管理。
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -657,24 +649,39 @@ export function HeroSmsReadonlyClient({
 
           {offer ? (
             <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">
+              <button
+                type="button"
+                className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
+                onClick={() => setPurchasePrice(offer.minPrice)}
+              >
                 <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
                   最低个人价
                 </p>
                 <p className="mt-3 text-3xl font-semibold">{offer.minPrice}</p>
-              </div>
-              <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">
+                <p className="mt-2 text-sm text-[var(--muted)]">点击带入购买价格</p>
+              </button>
+              <button
+                type="button"
+                className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
+                onClick={() => setPurchasePrice(offer.defaultPrice)}
+              >
                 <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
                   默认价
                 </p>
                 <p className="mt-3 text-2xl font-semibold">{offer.defaultPrice}</p>
-              </div>
-              <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">
+                <p className="mt-2 text-sm text-[var(--muted)]">点击带入购买价格</p>
+              </button>
+              <button
+                type="button"
+                className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
+                onClick={() => setPurchasePrice(offer.retailPrice)}
+              >
                 <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
                   零售价
                 </p>
                 <p className="mt-3 text-2xl font-semibold">{offer.retailPrice}</p>
-              </div>
+                <p className="mt-2 text-sm text-[var(--muted)]">点击带入购买价格</p>
+              </button>
               <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">
                 <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
                   可售总量
@@ -686,119 +693,32 @@ export function HeroSmsReadonlyClient({
               </div>
             </div>
           ) : null}
-        </section>
-
-        <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-3">
-              <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">购买验证</p>
-              <h2 className="text-2xl font-semibold">购买 1 条号码</h2>
-              <p className="text-sm leading-7 text-[var(--muted)]">
-                当前只做单次购买验证，不落库，不做活动列表。
-              </p>
-            </div>
-            <div className="flex w-full flex-col gap-3 lg:max-w-xl lg:flex-row lg:items-end">
-              <label className="grid flex-1 gap-2 text-sm">
-                <span className="text-[var(--muted)]">购置价格</span>
-                <input
-                  value={purchasePrice}
-                  onChange={(event) => setPurchasePrice(event.target.value)}
-                  placeholder={
-                    offer ? `例如 ${offer.minPrice}` : "请输入你希望的最高购置价格"
-                  }
-                  className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-                />
-              </label>
-              <button
-                type="button"
-                className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
-                onClick={handlePurchase}
-                disabled={isPurchasing}
-              >
-                {isPurchasing ? "购买中..." : "购买 1 条号码"}
-              </button>
-            </div>
+          <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-end">
+            <label className="grid flex-1 gap-2 text-sm">
+              <span className="text-[var(--muted)]">购置价格</span>
+              <input
+                value={purchasePrice}
+                onChange={(event) => setPurchasePrice(event.target.value)}
+                placeholder={
+                  offer ? `例如 ${offer.minPrice}` : "请输入你希望的最高购置价格"
+                }
+                className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+              />
+            </label>
+            <button
+              type="button"
+              className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
+              onClick={handlePurchase}
+              disabled={isPurchasing}
+            >
+              {isPurchasing ? "购买中..." : "购买 1 条号码"}
+            </button>
           </div>
 
           {purchaseError ? (
             <p className="mt-5 rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
               {purchaseError}
             </p>
-          ) : null}
-
-          {purchaseResult ? (
-            <div className="mt-5 rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.25em] text-[var(--muted)]">
-                    本次购买结果
-                  </p>
-                  <button
-                    type="button"
-                    className="mt-2 cursor-pointer text-left text-2xl font-semibold transition hover:opacity-75"
-                    onClick={() => copyText(purchaseResult.phoneNumber, "phone")}
-                    title="点击复制号码"
-                  >
-                    {purchaseResult.phoneNumber}
-                  </button>
-                  <p className="mt-2 text-sm text-[var(--muted)]">
-                    {copiedField === "phone" ? "号码已复制" : "点击号码可复制"}
-                  </p>
-                </div>
-                <span className="rounded-full border border-[var(--border)] bg-white px-3 py-2 text-sm font-medium">
-                  activationId: {purchaseResult.activationId}
-                </span>
-              </div>
-
-              <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                    实际价格
-                  </p>
-                  <p className="mt-2 text-xl font-semibold">
-                    {purchaseResult.activationCost} {getCurrencyLabel(purchaseResult.currency)}
-                  </p>
-                </div>
-                <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                    剩余有效时间
-                  </p>
-                  <p className="mt-2 text-sm font-semibold break-all">
-                    {countdownRemaining === null ? "待确认" : formatCountdown(countdownRemaining)}
-                  </p>
-                  <p className="mt-2 text-xs text-[var(--muted)]">
-                    {purchaseDeadline === null
-                      ? "未能从 activationTime 与 activationEndTime 推算有效时长"
-                      : `按接口返回的有效时长推算，截止 ${formatBeijingTime(
-                          new Date(purchaseDeadline).toISOString(),
-                        )}`}
-                  </p>
-                </div>
-                <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                    运营商
-                  </p>
-                  <p className="mt-2 text-xl font-semibold">{purchaseResult.activationOperator}</p>
-                </div>
-                <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                    国家
-                  </p>
-                  <p className="mt-2 text-xl font-semibold">
-                    {selectedCountryOption?.name ?? `国家 ${purchaseResult.countryCode}`}（+
-                    {purchaseResult.countryPhoneCode}）
-                  </p>
-                </div>
-                <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                    可重复接收短信
-                  </p>
-                  <p className="mt-2 text-xl font-semibold">
-                    {purchaseResult.canGetAnotherSms ? "是" : "否"}
-                  </p>
-                </div>
-              </div>
-            </div>
           ) : null}
         </section>
 
@@ -823,90 +743,84 @@ export function HeroSmsReadonlyClient({
               当前还没有活动中的 HeroSMS 号码。
             </div>
           ) : (
-            <div className="mt-5 grid gap-4">
-              {activations.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] p-5"
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <button
-                        type="button"
-                        className="cursor-pointer text-left text-2xl font-semibold transition hover:opacity-75"
-                        onClick={() => copyText(item.phoneNumber, `activation-phone-${item.id}`)}
-                        title="点击复制号码"
-                      >
-                        {item.phoneNumber}
-                      </button>
-                      <p className="mt-2 text-sm text-[var(--muted)]">
-                        {copiedField === `activation-phone-${item.id}`
-                          ? "号码已复制"
-                          : `${item.serviceName} · ${item.countryName}（+${item.countryPhoneCode}）`}
-                      </p>
-                    </div>
-                    <div className="rounded-full border border-[var(--border)] bg-white px-3 py-2 text-sm font-medium">
-                      activationId: {item.activationId}
-                    </div>
-                  </div>
+            <div className="mt-5 overflow-x-auto rounded-[24px] border border-[var(--border)] bg-white">
+              <table className="min-w-full border-collapse text-sm">
+                <thead className="bg-[var(--panel-strong)] text-left text-[var(--muted)]">
+                  <tr>
+                    <th className="px-4 py-3 font-medium">号码</th>
+                    <th className="px-4 py-3 font-medium">实际价格</th>
+                    <th className="px-4 py-3 font-medium">剩余时间</th>
+                    <th className="px-4 py-3 font-medium">当前状态</th>
+                    <th className="px-4 py-3 font-medium">运营商</th>
+                    <th className="px-4 py-3 font-medium">可重复接收短信</th>
+                    <th className="px-4 py-3 font-medium">最新短信</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activations.map((item) => {
+                    const remaining = getActivationRemainingMs(item);
 
-                  <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
-                      <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                        当前状态
-                      </p>
-                      <p className="mt-2 text-xl font-semibold">{item.activationStatusText}</p>
-                    </div>
-                    <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
-                      <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                        实际价格
-                      </p>
-                      <p className="mt-2 text-xl font-semibold">
-                        {item.activationCost} {item.currencyLabel}
-                      </p>
-                    </div>
-                    <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
-                      <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                        运营商
-                      </p>
-                      <p className="mt-2 text-xl font-semibold">{item.operatorCode}</p>
-                    </div>
-                    <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
-                      <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                        可重复接收短信
-                      </p>
-                      <p className="mt-2 text-xl font-semibold">
-                        {item.canGetAnotherSms ? "是" : "否"}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
-                    <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                      最新短信
-                    </p>
-                    {item.smsText ? (
-                      <button
-                        type="button"
-                        className="mt-2 cursor-pointer text-left text-sm leading-7 transition hover:opacity-75"
-                        onClick={() => copyText(item.smsText as string, `activation-sms-${item.id}`)}
-                        title="点击复制短信"
-                      >
-                        {item.smsText}
-                      </button>
-                    ) : (
-                      <p className="mt-2 text-sm text-[var(--muted)]">等待短信</p>
-                    )}
-                    {item.smsText ? (
-                      <p className="mt-2 text-xs text-[var(--muted)]">
-                        {copiedField === `activation-sms-${item.id}`
-                          ? "短信已复制"
-                          : "点击短信内容可复制"}
-                      </p>
-                    ) : null}
-                  </div>
-                </div>
-              ))}
+                    return (
+                      <tr key={item.id} className="border-t border-[var(--border)] align-top">
+                        <td className="px-4 py-4">
+                          <button
+                            type="button"
+                            className="cursor-pointer text-left font-semibold transition hover:opacity-75"
+                            onClick={() => copyText(item.phoneNumber, `activation-phone-${item.id}`)}
+                            title="点击复制号码"
+                          >
+                            {item.phoneNumber}
+                          </button>
+                          <p className="mt-1 text-xs text-[var(--muted)]">
+                            {copiedField === `activation-phone-${item.id}`
+                              ? "号码已复制"
+                              : "点击复制"}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4 font-medium">
+                          {item.activationCost} {item.currencyLabel}
+                        </td>
+                        <td className="px-4 py-4">
+                          <p className="font-medium">
+                            {remaining === null ? "待确认" : formatCountdown(remaining)}
+                          </p>
+                          <p className="mt-1 text-xs text-[var(--muted)]">
+                            截止 {formatBeijingTime(item.activationEndTime)}
+                          </p>
+                        </td>
+                        <td className="px-4 py-4 font-medium">{item.activationStatusText}</td>
+                        <td className="px-4 py-4 font-medium">{item.operatorCode}</td>
+                        <td className="px-4 py-4 font-medium">
+                          {item.canGetAnotherSms ? "是" : "否"}
+                        </td>
+                        <td className="max-w-sm px-4 py-4">
+                          {item.smsText ? (
+                            <>
+                              <button
+                                type="button"
+                                className="cursor-pointer text-left leading-7 transition hover:opacity-75"
+                                onClick={() =>
+                                  copyText(item.smsText as string, `activation-sms-${item.id}`)
+                                }
+                                title="点击复制短信"
+                              >
+                                {item.smsText}
+                              </button>
+                              <p className="mt-1 text-xs text-[var(--muted)]">
+                                {copiedField === `activation-sms-${item.id}`
+                                  ? "短信已复制"
+                                  : "点击复制"}
+                              </p>
+                            </>
+                          ) : (
+                            <span className="text-[var(--muted)]">等待短信</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </section>
