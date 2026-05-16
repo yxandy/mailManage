@@ -225,7 +225,17 @@ export function DashboardClient({
                 <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">
                   管理后台
                 </p>
-                <h1 className="text-3xl font-semibold">邮箱账号管理</h1>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-3xl font-semibold">邮箱账号管理</h1>
+                  <a
+                    href="/dashboard/hero-sms"
+                    title="进入 HeroSMS 验证页"
+                    aria-label="进入 HeroSMS 验证页"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--border)] bg-white text-lg font-semibold text-[var(--foreground)] transition hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                  >
+                    H
+                  </a>
+                </div>
                 <p className="text-sm leading-7 text-[var(--muted)]">
                   当前登录管理员：{username}，当前为 {tier.toUpperCase()}，共 {total} 条有效记录。
                 </p>
@@ -312,12 +322,6 @@ export function DashboardClient({
                   </a>
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <a
-                    href="/dashboard/hero-sms"
-                    className="rounded-2xl border border-[var(--border)] bg-white px-5 py-3 text-sm font-semibold text-[var(--foreground)]"
-                  >
-                    HeroSMS 验证页
-                  </a>
                   <button
                     type="button"
                     className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)]"

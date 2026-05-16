@@ -26,6 +26,47 @@ type OfferResponse = {
   offer: HeroSmsOfferView | null;
 };
 
+function normalizeSearchText(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function filterServices(services: HeroSmsServiceOption[], keyword: string): HeroSmsServiceOption[] {
+  const normalizedKeyword = normalizeSearchText(keyword);
+
+  if (!normalizedKeyword) {
+    return [];
+  }
+
+  return services
+    .filter((service) => {
+      const name = service.name.toLowerCase();
+      const code = service.code.toLowerCase();
+
+      return name.includes(normalizedKeyword) || code.includes(normalizedKeyword);
+    })
+    .slice(0, 12);
+}
+
+function filterCountries(
+  countries: HeroSmsCountryOption[],
+  keyword: string,
+): HeroSmsCountryOption[] {
+  const normalizedKeyword = normalizeSearchText(keyword);
+
+  if (!normalizedKeyword) {
+    return [];
+  }
+
+  return countries
+    .filter((country) => {
+      const name = country.name.toLowerCase();
+      const id = String(country.id);
+
+      return name.includes(normalizedKeyword) || id.includes(normalizedKeyword);
+    })
+    .slice(0, 12);
+}
+
 export function HeroSmsReadonlyClient({
   initialBalance,
   initialServices,
@@ -38,11 +79,21 @@ export function HeroSmsReadonlyClient({
   const [selectedCountry, setSelectedCountry] = useState(
     initialCountries[0] ? String(initialCountries[0].id) : "",
   );
+  const [serviceKeyword, setServiceKeyword] = useState("");
+  const [countryKeyword, setCountryKeyword] = useState("");
+  const [isServicePickerOpen, setIsServicePickerOpen] = useState(false);
+  const [isCountryPickerOpen, setIsCountryPickerOpen] = useState(false);
   const [offer, setOffer] = useState<HeroSmsOfferView | null>(null);
   const [pageError, setPageError] = useState("");
   const [offerError, setOfferError] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingOffer, setIsLoadingOffer] = useState(false);
+
+  const selectedServiceOption = services.find((service) => service.code === selectedService) ?? null;
+  const selectedCountryOption =
+    countries.find((country) => String(country.id) === selectedCountry) ?? null;
+  const serviceMatches = filterServices(services, serviceKeyword);
+  const countryMatches = filterCountries(countries, countryKeyword);
 
   async function loadOffer(service: string, country: string) {
     if (!service || !country) {
@@ -111,6 +162,8 @@ export function HeroSmsReadonlyClient({
 
       setSelectedService(nextService);
       setSelectedCountry(nextCountry ? String(nextCountry) : "");
+      setServiceKeyword("");
+      setCountryKeyword("");
 
       await loadOffer(nextService, nextCountry ? String(nextCountry) : "");
     } catch (error) {
@@ -166,34 +219,140 @@ export function HeroSmsReadonlyClient({
                 保留 HeroSMS 原始精度，不做四舍五入。
               </p>
             </div>
-            <label className="grid gap-2 text-sm">
+            <div
+              className="grid gap-2 text-sm"
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) {
+                  setIsServicePickerOpen(false);
+                }
+              }}
+            >
               <span className="text-[var(--muted)]">服务</span>
-              <select
-                className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-                value={selectedService}
-                onChange={(event) => setSelectedService(event.target.value)}
-              >
-                {services.map((service) => (
-                  <option key={service.code} value={service.code}>
-                    {service.name} ({service.code})
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm">
+              <div className="relative">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-left"
+                  onClick={() => {
+                    setIsServicePickerOpen((current) => !current);
+                    setIsCountryPickerOpen(false);
+                  }}
+                >
+                  <span className={selectedServiceOption ? "" : "text-[var(--muted)]"}>
+                    {selectedServiceOption
+                      ? `${selectedServiceOption.name} (${selectedServiceOption.code})`
+                      : "点击搜索服务"}
+                  </span>
+                  <span className="text-xs text-[var(--muted)]">⌕</span>
+                </button>
+                {isServicePickerOpen ? (
+                  <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 rounded-[24px] border border-[var(--border)] bg-[var(--panel)] p-3 shadow-[var(--shadow)]">
+                    <input
+                      autoFocus
+                      value={serviceKeyword}
+                      onChange={(event) => setServiceKeyword(event.target.value)}
+                      placeholder="输入服务名称或代码搜索"
+                      className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                    />
+                    {serviceKeyword ? (
+                      serviceMatches.length > 0 ? (
+                        <div className="mt-3 max-h-64 overflow-y-auto rounded-2xl border border-[var(--border)] bg-white">
+                          {serviceMatches.map((service) => (
+                            <button
+                              key={service.code}
+                              type="button"
+                              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm transition hover:bg-[var(--panel-strong)]"
+                              onClick={() => {
+                                setSelectedService(service.code);
+                                setServiceKeyword("");
+                                setIsServicePickerOpen(false);
+                              }}
+                            >
+                              <span>{service.name}</span>
+                              <span className="text-[var(--muted)]">{service.code}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-3 rounded-2xl border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">
+                          没有匹配到服务。
+                        </p>
+                      )
+                    ) : (
+                      <p className="mt-3 rounded-2xl border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">
+                        输入关键词后显示匹配结果。
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            <div
+              className="grid gap-2 text-sm"
+              onBlur={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) {
+                  setIsCountryPickerOpen(false);
+                }
+              }}
+            >
               <span className="text-[var(--muted)]">国家</span>
-              <select
-                className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-                value={selectedCountry}
-                onChange={(event) => setSelectedCountry(event.target.value)}
-              >
-                {countries.map((country) => (
-                  <option key={country.id} value={country.id}>
-                    {country.name} ({country.id})
-                  </option>
-                ))}
-              </select>
-            </label>
+              <div className="relative">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-left"
+                  onClick={() => {
+                    setIsCountryPickerOpen((current) => !current);
+                    setIsServicePickerOpen(false);
+                  }}
+                >
+                  <span className={selectedCountryOption ? "" : "text-[var(--muted)]"}>
+                    {selectedCountryOption
+                      ? `${selectedCountryOption.name} (${selectedCountryOption.id})`
+                      : "点击搜索国家"}
+                  </span>
+                  <span className="text-xs text-[var(--muted)]">⌕</span>
+                </button>
+                {isCountryPickerOpen ? (
+                  <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 rounded-[24px] border border-[var(--border)] bg-[var(--panel)] p-3 shadow-[var(--shadow)]">
+                    <input
+                      autoFocus
+                      value={countryKeyword}
+                      onChange={(event) => setCountryKeyword(event.target.value)}
+                      placeholder="输入国家名称或编号搜索"
+                      className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                    />
+                    {countryKeyword ? (
+                      countryMatches.length > 0 ? (
+                        <div className="mt-3 max-h-64 overflow-y-auto rounded-2xl border border-[var(--border)] bg-white">
+                          {countryMatches.map((country) => (
+                            <button
+                              key={country.id}
+                              type="button"
+                              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm transition hover:bg-[var(--panel-strong)]"
+                              onClick={() => {
+                                setSelectedCountry(String(country.id));
+                                setCountryKeyword("");
+                                setIsCountryPickerOpen(false);
+                              }}
+                            >
+                              <span>{country.name}</span>
+                              <span className="text-[var(--muted)]">{country.id}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-3 rounded-2xl border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">
+                          没有匹配到国家。
+                        </p>
+                      )
+                    ) : (
+                      <p className="mt-3 rounded-2xl border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">
+                        输入关键词后显示匹配结果。
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            </div>
           </div>
 
           {pageError ? (
