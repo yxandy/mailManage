@@ -71,6 +71,23 @@ export async function updateHeroSmsActivationByActivationId(
   }
 }
 
+export async function findHeroSmsActivationByActivationId(
+  activationId: string,
+): Promise<HeroSmsActivationRecord | null> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("hero_sms_activations")
+    .select("*")
+    .eq("activation_id", activationId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`查询 HeroSMS 活动记录失败：${error.message}`);
+  }
+
+  return (data ?? null) as HeroSmsActivationRecord | null;
+}
+
 export async function getHeroSmsActivationById(id: string): Promise<HeroSmsActivationRecord | null> {
   const supabase = createSupabaseServerClient();
   const { data, error } = await supabase

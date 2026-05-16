@@ -117,3 +117,12 @@ export type HeroSmsFavoriteView = {
   countryName: string;
   operatorCode: string;
 };
+
+export type HeroSmsWebhookPayload = {
+  activationId?: string | number;
+  service?: string;
+  text?: string;
+  code?: string | number | null;
+  country?: string | number;
+  receivedAt?: string;
+};
