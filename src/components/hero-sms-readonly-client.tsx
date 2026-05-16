@@ -104,6 +104,37 @@ function getCurrencyLabel(code: number): string {
   return CURRENCY_LABELS[code] ?? `货币代码 ${code}`;
 }
 
+function formatCountdown(ms: number): string {
+  if (ms <= 0) {
+    return "00:00";
+  }
+
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function getActivationDurationMs(result: HeroSmsPurchaseResultView | null): number | null {
+  if (!result) {
+    return null;
+  }
+
+  const activationStart = new Date(result.activationTime).getTime();
+  const activationEnd = new Date(result.activationEndTime).getTime();
+
+  if (
+    Number.isNaN(activationStart) ||
+    Number.isNaN(activationEnd) ||
+    activationEnd <= activationStart
+  ) {
+    return null;
+  }
+
+  return activationEnd - activationStart;
+}
+
 export function HeroSmsReadonlyClient({
   initialBalance,
   initialServices,
@@ -134,6 +165,8 @@ export function HeroSmsReadonlyClient({
   const [operatorError, setOperatorError] = useState("");
   const [isLoadingOperators, setIsLoadingOperators] = useState(false);
   const [copiedField, setCopiedField] = useState("");
+  const [countdownNow, setCountdownNow] = useState(Date.now());
+  const [purchaseLocalStartedAt, setPurchaseLocalStartedAt] = useState<number | null>(null);
 
   const selectedServiceOption = services.find((service) => service.code === selectedService) ?? null;
   const selectedCountryOption =
@@ -308,6 +341,7 @@ export function HeroSmsReadonlyClient({
         throw new Error(result.error ?? "购买失败");
       }
 
+      setPurchaseLocalStartedAt(Date.now());
       setPurchaseResult(result.result);
     } catch (error) {
       setPurchaseError(error instanceof Error ? error.message : "购买失败");
@@ -335,6 +369,25 @@ export function HeroSmsReadonlyClient({
       setCopiedField("");
     }
   }
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setCountdownNow(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  const purchaseActivatedAt =
+    getActivationDurationMs(purchaseResult);
+  const purchaseDeadline =
+    purchaseActivatedAt === null || purchaseLocalStartedAt === null
+      ? null
+      : purchaseLocalStartedAt + purchaseActivatedAt;
+  const countdownRemaining =
+    purchaseDeadline === null ? null : Math.max(purchaseDeadline - countdownNow, 0);
 
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-8">
@@ -370,14 +423,23 @@ export function HeroSmsReadonlyClient({
         </section>
 
         <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
-          <div className="grid gap-4 md:grid-cols-[1fr_1fr_1fr]">
-            <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">
-              <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">账户余额</p>
-              <p className="mt-3 text-3xl font-semibold">{balance}</p>
-              <p className="mt-2 text-sm text-[var(--muted)]">
-                保留 HeroSMS 原始精度，不做四舍五入。
-              </p>
+          <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">
+            <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">账户余额</p>
+            <p className="mt-3 text-3xl font-semibold">{balance}</p>
+            <p className="mt-2 text-sm text-[var(--muted)]">
+              保留 HeroSMS 原始精度，不做四舍五入。
+            </p>
+          </div>
+
+          <div className="mt-6 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">报价验证</p>
+              <h2 className="mt-2 text-2xl font-semibold">选择条件与当前最低个人价</h2>
             </div>
+            {isLoadingOffer ? <p className="text-sm text-[var(--muted)]">读取中...</p> : null}
+          </div>
+
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
             <div
               className="grid gap-2 text-sm"
               onBlur={(event) => {
@@ -543,16 +605,6 @@ export function HeroSmsReadonlyClient({
               {operatorError}
             </p>
           ) : null}
-        </section>
-
-        <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">报价验证</p>
-              <h2 className="mt-2 text-2xl font-semibold">当前最低个人价</h2>
-            </div>
-            {isLoadingOffer ? <p className="text-sm text-[var(--muted)]">读取中...</p> : null}
-          </div>
 
           {offerError ? (
             <p className="mt-5 rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
@@ -672,10 +724,17 @@ export function HeroSmsReadonlyClient({
                 </div>
                 <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
                   <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                    到期时间
+                    剩余有效时间
                   </p>
                   <p className="mt-2 text-sm font-semibold break-all">
-                    {formatBeijingTime(purchaseResult.activationEndTime)}
+                    {countdownRemaining === null ? "待确认" : formatCountdown(countdownRemaining)}
+                  </p>
+                  <p className="mt-2 text-xs text-[var(--muted)]">
+                    {purchaseDeadline === null
+                      ? "未能从 activationTime 与 activationEndTime 推算有效时长"
+                      : `按接口返回的有效时长推算，截止 ${formatBeijingTime(
+                          new Date(purchaseDeadline).toISOString(),
+                        )}`}
                   </p>
                 </div>
                 <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">

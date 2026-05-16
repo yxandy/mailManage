@@ -43,6 +43,14 @@
    - 关联时间
    - 操作
 
+## HeroSMS 模块约定
+
+1. HeroSMS 为独立模块，只复用现有管理员登录入口和首页入口，不复用 `email_accounts` 相关表、接口和页面逻辑。
+2. HeroSMS 的服务端接入代码统一放在 `src/lib/hero-sms`，页面与接口放在 `src/app/dashboard/hero-sms` 和 `src/app/api/hero-sms`。
+3. HeroSMS 购买、状态、生命周期动作优先以官方接口真实返回为准，不得凭经验硬编码固定有效时长、固定状态流或固定价格规则。
+4. HeroSMS 相关接口说明优先参考仓库内文档 `docs/herosms-api-cn.json` 以及官网文档，不在 `AGENTS.md` 中直接维护大段接口细节。
+5. HeroSMS 的 API Key 只允许通过环境变量提供，不得写入仓库跟踪文件、测试样例或文档正文。
+
 ## 数据字段约定
 
 1. `email_accounts.email_name` 为必填字段。
