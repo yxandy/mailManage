@@ -6,6 +6,7 @@ import type {
   HeroSmsBalanceView,
   HeroSmsCountryOption,
   HeroSmsOfferView,
+  HeroSmsOperatorOption,
   HeroSmsPurchaseResultView,
   HeroSmsServiceOption,
 } from "@/lib/hero-sms/types";
@@ -27,8 +28,16 @@ type OfferResponse = {
   offer: HeroSmsOfferView | null;
 };
 
+type OperatorsResponse = {
+  operators: HeroSmsOperatorOption[];
+};
+
 type PurchaseResponse = {
   result: HeroSmsPurchaseResultView;
+};
+
+const CURRENCY_LABELS: Record<number, string> = {
+  840: "USD",
 };
 
 function normalizeSearchText(value: string): string {
@@ -72,6 +81,29 @@ function filterCountries(
     .slice(0, 12);
 }
 
+function formatBeijingTime(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return `${value}（北京时间）`;
+  }
+
+  return `${new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(date)}（北京时间）`;
+}
+
+function getCurrencyLabel(code: number): string {
+  return CURRENCY_LABELS[code] ?? `货币代码 ${code}`;
+}
+
 export function HeroSmsReadonlyClient({
   initialBalance,
   initialServices,
@@ -97,12 +129,51 @@ export function HeroSmsReadonlyClient({
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingOffer, setIsLoadingOffer] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
+  const [operators, setOperators] = useState<HeroSmsOperatorOption[]>([]);
+  const [selectedOperator, setSelectedOperator] = useState("");
+  const [operatorError, setOperatorError] = useState("");
+  const [isLoadingOperators, setIsLoadingOperators] = useState(false);
+  const [copiedField, setCopiedField] = useState("");
 
   const selectedServiceOption = services.find((service) => service.code === selectedService) ?? null;
   const selectedCountryOption =
     countries.find((country) => String(country.id) === selectedCountry) ?? null;
   const serviceMatches = filterServices(services, serviceKeyword);
   const countryMatches = filterCountries(countries, countryKeyword);
+
+  async function loadOperators(country: string) {
+    if (!country) {
+      setOperators([]);
+      setSelectedOperator("");
+      setOperatorError("");
+      return;
+    }
+
+    setIsLoadingOperators(true);
+    setOperatorError("");
+
+    try {
+      const response = await fetch(
+        `/api/hero-sms/operators?country=${encodeURIComponent(country)}`,
+      );
+      const result = (await response.json()) as OperatorsResponse & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "查询运营商失败");
+      }
+
+      setOperators(result.operators);
+      setSelectedOperator((current) =>
+        result.operators.some((item) => item.code === current) ? current : "",
+      );
+    } catch (error) {
+      setOperators([]);
+      setSelectedOperator("");
+      setOperatorError(error instanceof Error ? error.message : "查询运营商失败");
+    } finally {
+      setIsLoadingOperators(false);
+    }
+  }
 
   async function loadOffer(service: string, country: string) {
     if (!service || !country) {
@@ -174,7 +245,10 @@ export function HeroSmsReadonlyClient({
       setServiceKeyword("");
       setCountryKeyword("");
 
-      await loadOffer(nextService, nextCountry ? String(nextCountry) : "");
+      await Promise.all([
+        loadOffer(nextService, nextCountry ? String(nextCountry) : ""),
+        loadOperators(nextCountry ? String(nextCountry) : ""),
+      ]);
     } catch (error) {
       setPageError(error instanceof Error ? error.message : "刷新失败");
     } finally {
@@ -225,6 +299,7 @@ export function HeroSmsReadonlyClient({
           service: selectedService,
           country: Number(selectedCountry),
           maxPrice: normalizedPrice,
+          operator: selectedOperator,
         }),
       });
       const result = (await response.json()) as PurchaseResponse & { error?: string };
@@ -245,6 +320,22 @@ export function HeroSmsReadonlyClient({
     void loadOffer(selectedService, selectedCountry);
   }, [selectedService, selectedCountry]);
 
+  useEffect(() => {
+    void loadOperators(selectedCountry);
+  }, [selectedCountry]);
+
+  async function copyText(value: string, field: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(field);
+      window.setTimeout(() => {
+        setCopiedField((current) => (current === field ? "" : current));
+      }, 1200);
+    } catch {
+      setCopiedField("");
+    }
+  }
+
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
@@ -254,9 +345,9 @@ export function HeroSmsReadonlyClient({
               <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">
                 HeroSMS
               </p>
-              <h1 className="text-3xl font-semibold">短信接码只读验证</h1>
+              <h1 className="text-3xl font-semibold">短信接码验证</h1>
               <p className="text-sm leading-7 text-[var(--muted)]">
-                这一页只验证余额、服务、国家和最低个人价读取是否正确，不执行购买。
+                这一页先验证余额、选项、报价和单次购买结果，暂时不做活动列表。
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -421,11 +512,35 @@ export function HeroSmsReadonlyClient({
                 ) : null}
               </div>
             </div>
+            <label className="grid gap-2 text-sm">
+              <span className="text-[var(--muted)]">运营商</span>
+              <select
+                value={selectedOperator}
+                onChange={(event) => setSelectedOperator(event.target.value)}
+                className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                disabled={isLoadingOperators}
+              >
+                <option value="">
+                  {isLoadingOperators ? "运营商读取中..." : "任意运营商"}
+                </option>
+                {operators.map((operator) => (
+                  <option key={operator.code} value={operator.code}>
+                    {operator.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
           {pageError ? (
             <p className="mt-4 rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
               {pageError}
+            </p>
+          ) : null}
+
+          {operatorError ? (
+            <p className="mt-4 rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
+              {operatorError}
             </p>
           ) : null}
         </section>
@@ -529,7 +644,17 @@ export function HeroSmsReadonlyClient({
                   <p className="text-sm uppercase tracking-[0.25em] text-[var(--muted)]">
                     本次购买结果
                   </p>
-                  <h3 className="mt-2 text-2xl font-semibold">{purchaseResult.phoneNumber}</h3>
+                  <button
+                    type="button"
+                    className="mt-2 cursor-pointer text-left text-2xl font-semibold transition hover:opacity-75"
+                    onClick={() => copyText(purchaseResult.phoneNumber, "phone")}
+                    title="点击复制号码"
+                  >
+                    {purchaseResult.phoneNumber}
+                  </button>
+                  <p className="mt-2 text-sm text-[var(--muted)]">
+                    {copiedField === "phone" ? "号码已复制" : "点击号码可复制"}
+                  </p>
                 </div>
                 <span className="rounded-full border border-[var(--border)] bg-white px-3 py-2 text-sm font-medium">
                   activationId: {purchaseResult.activationId}
@@ -541,14 +666,16 @@ export function HeroSmsReadonlyClient({
                   <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
                     实际价格
                   </p>
-                  <p className="mt-2 text-xl font-semibold">{purchaseResult.activationCost}</p>
+                  <p className="mt-2 text-xl font-semibold">
+                    {purchaseResult.activationCost} {getCurrencyLabel(purchaseResult.currency)}
+                  </p>
                 </div>
                 <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
                   <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
                     到期时间
                   </p>
                   <p className="mt-2 text-sm font-semibold break-all">
-                    {purchaseResult.activationEndTime}
+                    {formatBeijingTime(purchaseResult.activationEndTime)}
                   </p>
                 </div>
                 <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
@@ -559,16 +686,11 @@ export function HeroSmsReadonlyClient({
                 </div>
                 <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
                   <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                    币种
-                  </p>
-                  <p className="mt-2 text-xl font-semibold">{purchaseResult.currency}</p>
-                </div>
-                <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">
-                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                    国家代码
+                    国家
                   </p>
                   <p className="mt-2 text-xl font-semibold">
-                    {purchaseResult.countryCode} / +{purchaseResult.countryPhoneCode}
+                    {selectedCountryOption?.name ?? `国家 ${purchaseResult.countryCode}`}（+
+                    {purchaseResult.countryPhoneCode}）
                   </p>
                 </div>
                 <div className="rounded-[20px] border border-[var(--border)] bg-white px-4 py-4">

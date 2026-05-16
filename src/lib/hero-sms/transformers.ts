@@ -2,6 +2,7 @@ import type {
   HeroSmsBalanceView,
   HeroSmsCountryOption,
   HeroSmsOfferView,
+  HeroSmsOperatorOption,
   HeroSmsServiceOption,
 } from "./types";
 
@@ -37,6 +38,11 @@ type HeroSmsOfferBucket = {
 
 type HeroSmsOffersResponse = {
   data?: Record<string, Record<string, HeroSmsOfferBucket>>;
+};
+
+type HeroSmsOperatorResponse = {
+  status?: string;
+  countryOperators?: Record<string, string[]>;
 };
 
 function formatNumericString(value: string): string {
@@ -126,4 +132,31 @@ export function mapHeroSmsOffer(
     physicalCount: offer.counts.physical ?? 0,
     defaultPriceCount: offer.counts.defaultPrice ?? 0,
   };
+}
+
+export function mapHeroSmsOperators(
+  response: HeroSmsOperatorResponse,
+  country: number,
+): HeroSmsOperatorOption[] {
+  if (response.status !== "success") {
+    throw new Error("HeroSMS 运营商列表返回异常");
+  }
+
+  const operators = response.countryOperators?.[String(country)];
+
+  if (!Array.isArray(operators)) {
+    return [];
+  }
+
+  return operators
+    .filter((item) => typeof item === "string" && item.trim())
+    .map((item) => {
+      const code = item.trim();
+
+      return {
+        code,
+        name: code,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, "zh-CN"));
 }

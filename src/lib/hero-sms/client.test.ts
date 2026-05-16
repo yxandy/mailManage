@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   mapHeroSmsCountries,
   mapHeroSmsOffer,
+  mapHeroSmsOperators,
   mapHeroSmsServices,
   parseHeroSmsBalance,
 } from "./transformers.ts";
@@ -84,4 +85,22 @@ test("HeroSMS offers 不存在组合时返回空", () => {
   const result = mapHeroSmsOffer({ data: {} }, "tg", 6);
 
   assert.equal(result, null);
+});
+
+test("HeroSMS 运营商列表会按国家转换为前端选项", () => {
+  const result = mapHeroSmsOperators(
+    {
+      status: "success",
+      countryOperators: {
+        "175": ["optus", "vodafone", "telstra"],
+      },
+    },
+    175,
+  );
+
+  assert.deepEqual(result, [
+    { code: "optus", name: "optus" },
+    { code: "telstra", name: "telstra" },
+    { code: "vodafone", name: "vodafone" },
+  ]);
 });

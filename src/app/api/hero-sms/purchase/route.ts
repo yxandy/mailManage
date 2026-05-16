@@ -17,11 +17,13 @@ export async function POST(request: Request) {
       service?: string;
       country?: number;
       maxPrice?: string;
+      operator?: string;
     };
 
     const service = body.service?.trim() ?? "";
     const country = Number(body.country);
     const maxPrice = body.maxPrice?.trim() ?? "";
+    const operator = body.operator?.trim() ?? "";
 
     if (!service) {
       return NextResponse.json({ error: "缺少 service 参数" }, { status: 400 });
@@ -39,6 +41,7 @@ export async function POST(request: Request) {
       service,
       country,
       maxPrice,
+      operator,
     });
 
     return NextResponse.json({ result });

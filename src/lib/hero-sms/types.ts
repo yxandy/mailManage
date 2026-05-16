@@ -12,6 +12,11 @@ export type HeroSmsCountryOption = {
   name: string;
 };
 
+export type HeroSmsOperatorOption = {
+  code: string;
+  name: string;
+};
+
 export type HeroSmsOfferView = {
   service: string;
   country: number;

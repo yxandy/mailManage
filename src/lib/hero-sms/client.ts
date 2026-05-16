@@ -4,6 +4,7 @@ import type {
   HeroSmsBalanceView,
   HeroSmsCountryOption,
   HeroSmsOfferView,
+  HeroSmsOperatorOption,
   HeroSmsPurchaseErrorView,
   HeroSmsPurchaseResultView,
   HeroSmsServiceOption,
@@ -11,6 +12,7 @@ import type {
 import {
   mapHeroSmsCountries,
   mapHeroSmsOffer,
+  mapHeroSmsOperators,
   mapHeroSmsServices,
   parseHeroSmsBalance,
 } from "./transformers";
@@ -176,6 +178,20 @@ export async function getHeroSmsOptions(): Promise<{
   };
 }
 
+export async function getHeroSmsOperators(country: number): Promise<HeroSmsOperatorOption[]> {
+  const response = await fetchCompatJson<{
+    status?: string;
+    countryOperators?: Record<string, string[]>;
+  }>(
+    new URLSearchParams({
+      action: "getOperators",
+      country: String(country),
+    }),
+  );
+
+  return mapHeroSmsOperators(response, country);
+}
+
 export async function getHeroSmsOffer(
   service: string,
   country: number,
@@ -195,15 +211,20 @@ export async function purchaseHeroSmsNumber(input: {
   service: string;
   country: number;
   maxPrice: string;
+  operator?: string;
 }): Promise<HeroSmsPurchaseResultView> {
-  const { text, json } = await fetchCompatAny(
-    new URLSearchParams({
-      action: "getNumberV2",
-      service: input.service,
-      country: String(input.country),
-      maxPrice: input.maxPrice,
-    }),
-  );
+  const params = new URLSearchParams({
+    action: "getNumberV2",
+    service: input.service,
+    country: String(input.country),
+    maxPrice: input.maxPrice,
+  });
+
+  if (input.operator?.trim()) {
+    params.set("operator", input.operator.trim());
+  }
+
+  const { text, json } = await fetchCompatAny(params);
 
   if (json && json.title) {
     const error: HeroSmsPurchaseErrorView = {
