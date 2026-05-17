@@ -6,6 +6,7 @@ import type {
   HeroSmsBalanceView,
   HeroSmsCountryOption,
   HeroSmsOfferView,
+  HeroSmsPurchaseErrorCode,
   HeroSmsOperatorOption,
   HeroSmsPurchaseErrorView,
   HeroSmsPurchaseResultView,
@@ -74,6 +75,7 @@ type HeroSmsStructuredErrorResponse = {
   details?: string;
   info?: {
     min?: number;
+    retry_after_seconds?: number;
   };
 };
 
@@ -81,6 +83,85 @@ type HeroSmsActiveActivationsResponse = {
   status?: string;
   data?: HeroSmsActiveActivationItem[];
 };
+
+export class HeroSmsPurchaseError extends Error {
+  readonly payload: HeroSmsPurchaseErrorView;
+
+  constructor(payload: HeroSmsPurchaseErrorView) {
+    super(payload.message);
+    this.name = "HeroSmsPurchaseError";
+    this.payload = payload;
+  }
+}
+
+const HERO_SMS_PURCHASE_ERROR_MESSAGES: Record<HeroSmsPurchaseErrorCode, string> = {
+  NO_NUMBERS: "当前号码池暂时没有可售号码，系统可以稍后重试。",
+  WRONG_MAX_PRICE: "当前出价低于平台可接受价格，请提高价格后再试。",
+  NO_BALANCE: "HeroSMS 余额不足，请先充值后再试。",
+  WRONG_COUNTRY: "国家参数无效，请重新选择国家。",
+  WRONG_SERVICE: "服务参数无效，请重新选择服务。",
+  WRONG_CURRENCY: "当前货币参数不受支持。",
+  UNPROCESSABLE_ENTITY: "请求参数不完整或格式不正确。",
+  BAD_KEY: "HeroSMS API Key 无效，请检查服务端配置。",
+  ACCOUNT_INACTIVE: "HeroSMS 账户尚未激活。",
+  BANNED: "HeroSMS 账户当前被限制购买，请稍后再试。",
+  SERVICE_NOT_AVAILABLE: "当前服务暂不可售，请更换服务或稍后再试。",
+  CHANNELS_LIMIT: "HeroSMS 并发购买线程已达上限，请稍后再试。",
+  SERVER_ERROR: "HeroSMS 服务暂时异常，请稍后再试。",
+  BAD_ACTION: "HeroSMS 接口动作无效。",
+  UNKNOWN: "HeroSMS 返回了未识别的购买错误。",
+};
+
+function normalizePurchaseErrorCode(value: string): HeroSmsPurchaseErrorCode {
+  switch (value) {
+    case "NO_NUMBERS":
+    case "WRONG_MAX_PRICE":
+    case "NO_BALANCE":
+    case "WRONG_COUNTRY":
+    case "WRONG_SERVICE":
+    case "WRONG_CURRENCY":
+    case "UNPROCESSABLE_ENTITY":
+    case "BAD_KEY":
+    case "ACCOUNT_INACTIVE":
+    case "BANNED":
+    case "SERVICE_NOT_AVAILABLE":
+    case "CHANNELS_LIMIT":
+    case "SERVER_ERROR":
+    case "BAD_ACTION":
+      return value;
+    default:
+      return "UNKNOWN";
+  }
+}
+
+function buildPurchaseError(params: {
+  code: string;
+  details?: string;
+  minPrice?: string;
+  retryAfterSeconds?: number;
+  raw: string;
+}): HeroSmsPurchaseError {
+  const code = normalizePurchaseErrorCode(params.code);
+  const minInfo = params.minPrice ? ` 最低可接受价格：${params.minPrice}。` : "";
+  const retryInfo =
+    typeof params.retryAfterSeconds === "number" && params.retryAfterSeconds > 0
+      ? ` 建议 ${params.retryAfterSeconds} 秒后再试。`
+      : "";
+  const details = params.details?.trim() ?? "";
+  const suffix = details ? `（${details}）` : "";
+  const message = `${HERO_SMS_PURCHASE_ERROR_MESSAGES[code]}${minInfo}${retryInfo}${suffix}`.trim();
+
+  return new HeroSmsPurchaseError({
+    code,
+    title: code,
+    details,
+    message,
+    minPrice: params.minPrice,
+    retryAfterSeconds: params.retryAfterSeconds,
+    retryable: code === "NO_NUMBERS",
+    raw: params.raw,
+  });
+}
 
 function getHeroSmsApiKey(): string {
   return getRequiredEnv("HERO_SMS_API_KEY");
@@ -234,14 +315,25 @@ export async function purchaseHeroSmsNumber(input: {
   const { text, json } = await fetchCompatAny(params);
 
   if (json && json.title) {
-    const error: HeroSmsPurchaseErrorView = {
-      title: json.title,
+    throw buildPurchaseError({
+      code: json.title,
       details: json.details ?? "",
       minPrice: typeof json.info?.min === "number" ? String(json.info.min) : undefined,
-    };
-    const minInfo = error.minPrice ? `，最低可接受价格：${error.minPrice}` : "";
+      retryAfterSeconds:
+        typeof json.info?.retry_after_seconds === "number"
+          ? json.info.retry_after_seconds
+          : undefined,
+      raw: text,
+    });
+  }
 
-    throw new Error(`${error.title}${error.details ? `：${error.details}` : ""}${minInfo}`);
+  const plainErrorCode = text.split(":")[0]?.trim() ?? "";
+
+  if (/^[A-Z_]+$/.test(plainErrorCode) && plainErrorCode !== "ACCESS_NUMBER") {
+    throw buildPurchaseError({
+      code: plainErrorCode,
+      raw: text,
+    });
   }
 
   let result: HeroSmsPurchaseSuccessResponse;
@@ -249,7 +341,11 @@ export async function purchaseHeroSmsNumber(input: {
   try {
     result = JSON.parse(text) as HeroSmsPurchaseSuccessResponse;
   } catch {
-    throw new Error(`HeroSMS 返回了无法解析的购买结果：${text}`);
+    throw buildPurchaseError({
+      code: "UNKNOWN",
+      details: "购买结果无法解析",
+      raw: text,
+    });
   }
 
   if (

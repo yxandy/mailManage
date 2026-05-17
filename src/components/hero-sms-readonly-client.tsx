@@ -9,6 +9,7 @@ import type {
   HeroSmsFavoriteView,
   HeroSmsOfferView,
   HeroSmsOperatorOption,
+  HeroSmsPurchaseErrorView,
   HeroSmsServiceOption,
 } from "@/lib/hero-sms/types";
 import { extractDigitsFromSmsText } from "@/lib/hero-sms/activations";
@@ -45,6 +46,14 @@ type FavoritesResponse = {
 };
 
 type ActivationAction = "cancel" | "finish";
+
+type PurchaseResponse = {
+  error?: string;
+  purchaseError?: HeroSmsPurchaseErrorView;
+};
+
+const HERO_SMS_AUTO_RETRY_INTERVAL_SECONDS = 8;
+const HERO_SMS_AUTO_RETRY_MAX_ATTEMPTS = 75;
 
 const CURRENCY_LABELS: Record<number, string> = {
   840: "USD",
@@ -155,6 +164,9 @@ export function HeroSmsReadonlyClient({
   const [copiedField, setCopiedField] = useState("");
   const [countdownNow, setCountdownNow] = useState(Date.now());
   const [showDigitsOnly, setShowDigitsOnly] = useState(true);
+  const [purchaseLogs, setPurchaseLogs] = useState<string[]>([]);
+  const [autoRetryAttempt, setAutoRetryAttempt] = useState(0);
+  const [autoRetryCountdown, setAutoRetryCountdown] = useState(0);
 
   const selectedServiceOption = services.find((service) => service.code === selectedService) ?? null;
   const selectedCountryOption =
@@ -411,33 +423,74 @@ export function HeroSmsReadonlyClient({
 
     setIsPurchasing(true);
     setPurchaseError("");
+    setPurchaseLogs([]);
+    setAutoRetryAttempt(0);
+    setAutoRetryCountdown(0);
 
     try {
-      const response = await fetch("/api/hero-sms/purchase", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          service: selectedService,
-          serviceName: selectedServiceOption?.name ?? selectedService,
-          country: Number(selectedCountry),
-          countryName: selectedCountryOption?.name ?? `国家 ${selectedCountry}`,
-          maxPrice: normalizedPrice,
-          operator: selectedOperator,
-        }),
-      });
-      const result = (await response.json()) as { error?: string };
+      const requestBody = {
+        service: selectedService,
+        serviceName: selectedServiceOption?.name ?? selectedService,
+        country: Number(selectedCountry),
+        countryName: selectedCountryOption?.name ?? `国家 ${selectedCountry}`,
+        maxPrice: normalizedPrice,
+        operator: selectedOperator,
+      };
 
-      if (!response.ok) {
+      for (let attempt = 1; attempt <= HERO_SMS_AUTO_RETRY_MAX_ATTEMPTS; attempt += 1) {
+        setAutoRetryAttempt(attempt);
+
+        const response = await fetch("/api/hero-sms/purchase", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        });
+        const result = (await response.json()) as PurchaseResponse;
+
+        if (response.ok) {
+          setPurchaseLogs((current) => [...current, `第 ${attempt} 次尝试购买成功。`]);
+          await Promise.all([refreshActivations(), refreshBalanceOnly()]);
+          setAutoRetryCountdown(0);
+          return;
+        }
+
+        if (result.purchaseError?.code === "NO_NUMBERS") {
+          if (attempt >= HERO_SMS_AUTO_RETRY_MAX_ATTEMPTS) {
+            throw new Error(
+              `已自动重试 ${HERO_SMS_AUTO_RETRY_MAX_ATTEMPTS} 次，仍然没有可售号码，请稍后再试。`,
+            );
+          }
+
+          setPurchaseLogs((current) => [
+            ...current,
+            `已开启自动重试，当前重试第 ${attempt} 次，${HERO_SMS_AUTO_RETRY_INTERVAL_SECONDS} 秒后开启下次重试。`,
+          ]);
+
+          for (
+            let seconds = HERO_SMS_AUTO_RETRY_INTERVAL_SECONDS;
+            seconds > 0;
+            seconds -= 1
+          ) {
+            setAutoRetryCountdown(seconds);
+            await new Promise((resolve) => {
+              window.setTimeout(resolve, 1000);
+            });
+          }
+
+          setAutoRetryCountdown(0);
+          continue;
+        }
+
         throw new Error(result.error ?? "购买失败");
       }
 
-      await Promise.all([refreshActivations(), refreshBalanceOnly()]);
     } catch (error) {
       setPurchaseError(error instanceof Error ? error.message : "购买失败");
     } finally {
       setIsPurchasing(false);
+      setAutoRetryCountdown(0);
     }
   }
 
@@ -893,6 +946,25 @@ export function HeroSmsReadonlyClient({
             <p className="mt-5 rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
               {purchaseError}
             </p>
+          ) : null}
+
+          {purchaseLogs.length > 0 ? (
+            <div className="mt-5 rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-[var(--text)]">自动购买日志</p>
+                {isPurchasing && autoRetryAttempt > 0 ? (
+                  <p className="text-xs text-[var(--muted)]">
+                    当前第 {autoRetryAttempt} 次尝试
+                    {autoRetryCountdown > 0 ? `，${autoRetryCountdown} 秒后继续` : ""}
+                  </p>
+                ) : null}
+              </div>
+              <div className="mt-3 flex flex-col gap-2 text-sm text-[var(--muted)]">
+                {purchaseLogs.map((log, index) => (
+                  <p key={`${index}-${log}`}>{log}</p>
+                ))}
+              </div>
+            </div>
           ) : null}
         </section>
 

@@ -41,10 +41,32 @@ export type HeroSmsPurchaseResultView = {
   activationOperator: string;
 };
 
+export type HeroSmsPurchaseErrorCode =
+  | "NO_NUMBERS"
+  | "WRONG_MAX_PRICE"
+  | "NO_BALANCE"
+  | "WRONG_COUNTRY"
+  | "WRONG_SERVICE"
+  | "WRONG_CURRENCY"
+  | "UNPROCESSABLE_ENTITY"
+  | "BAD_KEY"
+  | "ACCOUNT_INACTIVE"
+  | "BANNED"
+  | "SERVICE_NOT_AVAILABLE"
+  | "CHANNELS_LIMIT"
+  | "SERVER_ERROR"
+  | "BAD_ACTION"
+  | "UNKNOWN";
+
 export type HeroSmsPurchaseErrorView = {
+  code: HeroSmsPurchaseErrorCode;
   title: string;
   details: string;
+  message: string;
   minPrice?: string;
+  retryAfterSeconds?: number;
+  retryable: boolean;
+  raw: string;
 };
 
 export type HeroSmsActivationRecord = {

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentSession } from "@/lib/auth/auth";
-import { purchaseHeroSmsNumber } from "@/lib/hero-sms/client";
+import {
+  HeroSmsPurchaseError,
+  purchaseHeroSmsNumber,
+} from "@/lib/hero-sms/client";
 import { createHeroSmsActivation } from "@/lib/hero-sms/repository";
 
 export const runtime = "nodejs";
@@ -60,6 +63,16 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ result });
   } catch (error) {
+    if (error instanceof HeroSmsPurchaseError) {
+      return NextResponse.json(
+        {
+          error: error.payload.message,
+          purchaseError: error.payload,
+        },
+        { status: 400 },
+      );
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "购买失败" },
       { status: 400 },
