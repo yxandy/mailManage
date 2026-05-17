@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type {
   HeroSmsActivationView,
@@ -167,6 +167,8 @@ export function HeroSmsReadonlyClient({
   const [purchaseLogs, setPurchaseLogs] = useState<string[]>([]);
   const [autoRetryAttempt, setAutoRetryAttempt] = useState(0);
   const [autoRetryCountdown, setAutoRetryCountdown] = useState(0);
+  const [isStoppingRetry, setIsStoppingRetry] = useState(false);
+  const stopRetryRef = useRef(false);
 
   const selectedServiceOption = services.find((service) => service.code === selectedService) ?? null;
   const selectedCountryOption =
@@ -426,6 +428,8 @@ export function HeroSmsReadonlyClient({
     setPurchaseLogs([]);
     setAutoRetryAttempt(0);
     setAutoRetryCountdown(0);
+    setIsStoppingRetry(false);
+    stopRetryRef.current = false;
 
     try {
       const requestBody = {
@@ -438,6 +442,10 @@ export function HeroSmsReadonlyClient({
       };
 
       for (let attempt = 1; attempt <= HERO_SMS_AUTO_RETRY_MAX_ATTEMPTS; attempt += 1) {
+        if (stopRetryRef.current) {
+          throw new Error("已手动停止自动重试。");
+        }
+
         setAutoRetryAttempt(attempt);
 
         const response = await fetch("/api/hero-sms/purchase", {
@@ -473,6 +481,10 @@ export function HeroSmsReadonlyClient({
             seconds > 0;
             seconds -= 1
           ) {
+            if (stopRetryRef.current) {
+              throw new Error("已手动停止自动重试。");
+            }
+
             setAutoRetryCountdown(seconds);
             await new Promise((resolve) => {
               window.setTimeout(resolve, 1000);
@@ -491,7 +503,22 @@ export function HeroSmsReadonlyClient({
     } finally {
       setIsPurchasing(false);
       setAutoRetryCountdown(0);
+      setIsStoppingRetry(false);
+      stopRetryRef.current = false;
     }
+  }
+
+  function handleStopRetry() {
+    if (!isPurchasing || isStoppingRetry) {
+      return;
+    }
+
+    setIsStoppingRetry(true);
+    stopRetryRef.current = true;
+    setPurchaseLogs((current) => [
+      ...current,
+      "已请求停止自动重试，当前等待中的重试将在本轮结束后停止。",
+    ]);
   }
 
   useEffect(() => {
@@ -874,98 +901,119 @@ export function HeroSmsReadonlyClient({
             </div>
           ) : null}
 
-          {offer ? (
-            <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <button
-                type="button"
-                className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
-                onClick={() => setPurchasePrice(offer.minPrice)}
-              >
-                <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                  最低个人价
-                </p>
-                <p className="mt-3 text-3xl font-semibold">{offer.minPrice}</p>
-                <p className="mt-2 text-sm text-[var(--muted)]">点击带入购买价格</p>
-              </button>
-              <button
-                type="button"
-                className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
-                onClick={() => setPurchasePrice(offer.defaultPrice)}
-              >
-                <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                  默认价
-                </p>
-                <p className="mt-3 text-2xl font-semibold">{offer.defaultPrice}</p>
-                <p className="mt-2 text-sm text-[var(--muted)]">点击带入购买价格</p>
-              </button>
-              <button
-                type="button"
-                className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
-                onClick={() => setPurchasePrice(offer.retailPrice)}
-              >
-                <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                  零售价
-                </p>
-                <p className="mt-3 text-2xl font-semibold">{offer.retailPrice}</p>
-                <p className="mt-2 text-sm text-[var(--muted)]">点击带入购买价格</p>
-              </button>
-              <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">
-                <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                  可售总量
-                </p>
-                <p className="mt-3 text-2xl font-semibold">{offer.totalCount}</p>
-                <p className="mt-2 text-sm text-[var(--muted)]">
-                  实体 {offer.physicalCount} / 默认价位 {offer.defaultPriceCount}
-                </p>
+          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,2fr)_360px]">
+            <div>
+              {offer ? (
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  <button
+                    type="button"
+                    className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
+                    onClick={() => setPurchasePrice(offer.minPrice)}
+                  >
+                    <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                      最低个人价
+                    </p>
+                    <p className="mt-3 text-3xl font-semibold">{offer.minPrice}</p>
+                    <p className="mt-2 text-sm text-[var(--muted)]">点击带入购买价格</p>
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
+                    onClick={() => setPurchasePrice(offer.defaultPrice)}
+                  >
+                    <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                      默认价
+                    </p>
+                    <p className="mt-3 text-2xl font-semibold">{offer.defaultPrice}</p>
+                    <p className="mt-2 text-sm text-[var(--muted)]">点击带入购买价格</p>
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
+                    onClick={() => setPurchasePrice(offer.retailPrice)}
+                  >
+                    <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                      零售价
+                    </p>
+                    <p className="mt-3 text-2xl font-semibold">{offer.retailPrice}</p>
+                    <p className="mt-2 text-sm text-[var(--muted)]">点击带入购买价格</p>
+                  </button>
+                  <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">
+                    <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                      可售总量
+                    </p>
+                    <p className="mt-3 text-2xl font-semibold">{offer.totalCount}</p>
+                    <p className="mt-2 text-sm text-[var(--muted)]">
+                      实体 {offer.physicalCount} / 默认价位 {offer.defaultPriceCount}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-end">
+                <label className="grid flex-1 gap-2 text-sm">
+                  <span className="text-[var(--muted)]">购置价格</span>
+                  <input
+                    value={purchasePrice}
+                    onChange={(event) => setPurchasePrice(event.target.value)}
+                    placeholder={
+                      offer ? `例如 ${offer.minPrice}` : "请输入你希望的最高购置价格"
+                    }
+                    className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                  />
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
+                    onClick={handlePurchase}
+                    disabled={isPurchasing}
+                  >
+                    {isPurchasing ? "购买中..." : "购买 1 条号码"}
+                  </button>
+                  {isPurchasing ? (
+                    <button
+                      type="button"
+                      className="rounded-2xl border border-[var(--danger)] px-5 py-3 text-sm font-semibold text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-70"
+                      onClick={handleStopRetry}
+                      disabled={isStoppingRetry}
+                    >
+                      {isStoppingRetry ? "停止中..." : "停止重试"}
+                    </button>
+                  ) : null}
+                </div>
               </div>
+
+              {purchaseError ? (
+                <p className="mt-5 rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
+                  {purchaseError}
+                </p>
+              ) : null}
             </div>
-          ) : null}
-          <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-end">
-            <label className="grid flex-1 gap-2 text-sm">
-              <span className="text-[var(--muted)]">购置价格</span>
-              <input
-                value={purchasePrice}
-                onChange={(event) => setPurchasePrice(event.target.value)}
-                placeholder={
-                  offer ? `例如 ${offer.minPrice}` : "请输入你希望的最高购置价格"
-                }
-                className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-              />
-            </label>
-            <button
-              type="button"
-              className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
-              onClick={handlePurchase}
-              disabled={isPurchasing}
-            >
-              {isPurchasing ? "购买中..." : "购买 1 条号码"}
-            </button>
-          </div>
 
-          {purchaseError ? (
-            <p className="mt-5 rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
-              {purchaseError}
-            </p>
-          ) : null}
-
-          {purchaseLogs.length > 0 ? (
-            <div className="mt-5 rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
+            <aside className="rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium text-[var(--text)]">自动购买日志</p>
                 {isPurchasing && autoRetryAttempt > 0 ? (
-                  <p className="text-xs text-[var(--muted)]">
+                  <p className="text-xs text-[var(--muted)] text-right">
                     当前第 {autoRetryAttempt} 次尝试
                     {autoRetryCountdown > 0 ? `，${autoRetryCountdown} 秒后继续` : ""}
                   </p>
                 ) : null}
               </div>
-              <div className="mt-3 flex flex-col gap-2 text-sm text-[var(--muted)]">
-                {purchaseLogs.map((log, index) => (
-                  <p key={`${index}-${log}`}>{log}</p>
-                ))}
+              <div className="mt-3 h-[420px] overflow-y-auto pr-1 text-sm text-[var(--muted)]">
+                {purchaseLogs.length > 0 ? (
+                  <div className="flex flex-col gap-3">
+                    {purchaseLogs.map((log, index) => (
+                      <p key={`${index}-${log}`}>{log}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <p>这里会显示自动购买的重试过程和结果。</p>
+                )}
               </div>
-            </div>
-          ) : null}
+            </aside>
+          </div>
         </section>
 
         <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
