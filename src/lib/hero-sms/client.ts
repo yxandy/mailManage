@@ -84,6 +84,11 @@ type HeroSmsActiveActivationsResponse = {
   data?: HeroSmsActiveActivationItem[];
 };
 
+type HeroSmsCompatRawResponse = {
+  status: number;
+  text: string;
+};
+
 export class HeroSmsPurchaseError extends Error {
   readonly payload: HeroSmsPurchaseErrorView;
 
@@ -167,7 +172,26 @@ function getHeroSmsApiKey(): string {
   return getRequiredEnv("HERO_SMS_API_KEY");
 }
 
-async function fetchCompatText(params: URLSearchParams): Promise<string> {
+function parseCompatStructuredError(text: string): HeroSmsStructuredErrorResponse | null {
+  try {
+    return JSON.parse(text) as HeroSmsStructuredErrorResponse;
+  } catch {
+    return null;
+  }
+}
+
+function buildCompatHttpError(status: number, text: string): Error {
+  const json = parseCompatStructuredError(text);
+
+  if (json?.title) {
+    const details = json.details?.trim() ? `：${json.details.trim()}` : "";
+    return new Error(`HeroSMS 请求失败：${status}（${json.title}${details}）`);
+  }
+
+  return new Error(`HeroSMS 请求失败：${status}${text ? `（${text}）` : ""}`);
+}
+
+async function fetchCompatRaw(params: URLSearchParams): Promise<HeroSmsCompatRawResponse> {
   params.set("api_key", getHeroSmsApiKey());
 
   const response = await fetch(`${HERO_SMS_COMPAT_BASE_URL}?${params.toString()}`, {
@@ -176,11 +200,20 @@ async function fetchCompatText(params: URLSearchParams): Promise<string> {
   });
   const text = await response.text();
 
-  if (!response.ok) {
-    throw new Error(`HeroSMS 请求失败：${response.status}`);
+  return {
+    status: response.status,
+    text: text.trim(),
+  };
+}
+
+async function fetchCompatText(params: URLSearchParams): Promise<string> {
+  const result = await fetchCompatRaw(params);
+
+  if (result.status < 200 || result.status >= 300) {
+    throw buildCompatHttpError(result.status, result.text);
   }
 
-  return text.trim();
+  return result.text;
 }
 
 async function fetchCompatJson<T>(params: URLSearchParams): Promise<T> {
@@ -195,20 +228,14 @@ async function fetchCompatJson<T>(params: URLSearchParams): Promise<T> {
 
 async function fetchCompatAny(
   params: URLSearchParams,
-): Promise<{ text: string; json: HeroSmsStructuredErrorResponse | null }> {
-  const text = await fetchCompatText(params);
+): Promise<{ status: number; text: string; json: HeroSmsStructuredErrorResponse | null }> {
+  const result = await fetchCompatRaw(params);
 
-  try {
-    return {
-      text,
-      json: JSON.parse(text) as HeroSmsStructuredErrorResponse,
-    };
-  } catch {
-    return {
-      text,
-      json: null,
-    };
-  }
+  return {
+    status: result.status,
+    text: result.text,
+    json: parseCompatStructuredError(result.text),
+  };
 }
 
 async function fetchRestJson<T>(pathname: string): Promise<T> {
@@ -312,7 +339,28 @@ export async function purchaseHeroSmsNumber(input: {
     params.set("operator", input.operator.trim());
   }
 
-  const { text, json } = await fetchCompatAny(params);
+  const { status, text, json } = await fetchCompatAny(params);
+
+  if (status < 200 || status >= 300) {
+    if (json?.title) {
+      throw buildPurchaseError({
+        code: json.title,
+        details: json.details ?? "",
+        minPrice: typeof json.info?.min === "number" ? String(json.info.min) : undefined,
+        retryAfterSeconds:
+          typeof json.info?.retry_after_seconds === "number"
+            ? json.info.retry_after_seconds
+            : undefined,
+        raw: text,
+      });
+    }
+
+    throw buildPurchaseError({
+      code: "UNKNOWN",
+      details: `HTTP ${status}`,
+      raw: text,
+    });
+  }
 
   if (json && json.title) {
     throw buildPurchaseError({
