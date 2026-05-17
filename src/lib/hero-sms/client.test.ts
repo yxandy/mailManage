@@ -54,12 +54,16 @@ test("HeroSMS offers 可解析最低个人价与库存", () => {
             prices: {
               min: 0.15,
               default: 0.15,
-              retail: 0.2,
             },
             counts: {
               total: 22598,
               physical: 12352,
               defaultPrice: 4787,
+            },
+            map: {
+              "0.1500": 14460,
+              "0.1553": 28887,
+              "0.6143": 670031,
             },
           },
         },
@@ -74,7 +78,7 @@ test("HeroSMS offers 可解析最低个人价与库存", () => {
     country: 6,
     minPrice: "0.15",
     defaultPrice: "0.15",
-    retailPrice: "0.2",
+    tierMinPrice: "0.15",
     totalCount: 22598,
     physicalCount: 12352,
     defaultPriceCount: 4787,

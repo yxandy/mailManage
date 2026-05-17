@@ -46,7 +46,7 @@ type FavoritesResponse = {
 };
 
 type ActivationAction = "cancel" | "finish";
-type PurchasePriceSource = "manual" | "min" | "default" | "retail";
+type PurchasePriceSource = "manual" | "min" | "default" | "tier-min";
 
 type PurchaseResponse = {
   error?: string;
@@ -549,8 +549,8 @@ export function HeroSmsReadonlyClient({
       return;
     }
 
-    if (purchasePriceSource === "retail") {
-      setPurchasePrice(offer.retailPrice);
+    if (purchasePriceSource === "tier-min") {
+      setPurchasePrice(offer.tierMinPrice);
     }
   }, [offer, purchasePriceSource]);
 
@@ -959,12 +959,12 @@ export function HeroSmsReadonlyClient({
                   <button
                     type="button"
                     className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
-                    onClick={() => applyOfferPrice("retail", offer.retailPrice)}
+                    onClick={() => applyOfferPrice("tier-min", offer.tierMinPrice)}
                   >
                     <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                      零售价
+                      阶梯最低价
                     </p>
-                    <p className="mt-3 text-2xl font-semibold">{offer.retailPrice}</p>
+                    <p className="mt-3 text-2xl font-semibold">{offer.tierMinPrice}</p>
                     <p className="mt-2 text-sm text-[var(--muted)]">点击带入购买价格</p>
                   </button>
                   <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">

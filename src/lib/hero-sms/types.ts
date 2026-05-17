@@ -22,7 +22,7 @@ export type HeroSmsOfferView = {
   country: number;
   minPrice: string;
   defaultPrice: string;
-  retailPrice: string;
+  tierMinPrice: string;
   totalCount: number;
   physicalCount: number;
   defaultPriceCount: number;

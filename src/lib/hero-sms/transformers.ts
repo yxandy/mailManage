@@ -34,6 +34,7 @@ type HeroSmsOfferBucket = {
     physical?: number;
     defaultPrice?: number;
   };
+  map?: Record<string, number>;
 };
 
 type HeroSmsOffersResponse = {
@@ -112,12 +113,17 @@ export function mapHeroSmsOffer(
 
   const min = offer.prices.min;
   const defaultPrice = offer.prices.default;
-  const retail = offer.prices.retail;
+  const tierMinPrice = Object.keys(offer.map ?? {})
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => Number(item))
+    .filter((item) => Number.isFinite(item))
+    .sort((a, b) => a - b)[0];
 
   if (
     typeof min !== "number" ||
     typeof defaultPrice !== "number" ||
-    typeof retail !== "number"
+    typeof tierMinPrice !== "number"
   ) {
     return null;
   }
@@ -127,7 +133,7 @@ export function mapHeroSmsOffer(
     country,
     minPrice: String(min),
     defaultPrice: String(defaultPrice),
-    retailPrice: String(retail),
+    tierMinPrice: String(tierMinPrice),
     totalCount: offer.counts.total ?? 0,
     physicalCount: offer.counts.physical ?? 0,
     defaultPriceCount: offer.counts.defaultPrice ?? 0,
