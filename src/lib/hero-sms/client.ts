@@ -523,8 +523,14 @@ export async function syncHeroSmsActivations(
         current.activationStatus === undefined || current.activationStatus === null
           ? record.activation_status
           : String(current.activationStatus),
-      smsCode: current.smsCode ?? record.sms_code,
-      smsText: current.smsText ?? record.sms_text,
+      smsCode:
+        current.activationStatus === 3 || String(current.activationStatus ?? "") === "3"
+          ? null
+          : current.smsCode ?? record.sms_code,
+      smsText:
+        current.activationStatus === 3 || String(current.activationStatus ?? "") === "3"
+          ? null
+          : current.smsText ?? record.sms_text,
       isActive: true,
     };
   });

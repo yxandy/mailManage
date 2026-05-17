@@ -10,10 +10,10 @@ const HERO_SMS_CURRENCY_LABELS: Record<number, string> = {
 };
 
 const HERO_SMS_STATUS_LABELS: Record<string, string> = {
-  "1": "等待短信",
-  "2": "等待短信",
-  "3": "等待再次短信",
-  "4": "已收到短信",
+  "1": "等待接收短信",
+  "2": "收到短信",
+  "3": "等待再次接收短信",
+  "4": "等待接收短信",
   "6": "已完成",
   "8": "已取消",
 };
@@ -24,11 +24,11 @@ export function getHeroSmsCurrencyLabel(code: number): string {
 
 export function getHeroSmsStatusText(status: string | null, smsText: string | null): string {
   if (smsText?.trim()) {
-    return "已收到短信";
+    return "收到短信";
   }
 
   if (!status) {
-    return "等待短信";
+    return "等待接收短信";
   }
 
   return HERO_SMS_STATUS_LABELS[status] ?? `状态 ${status}`;
@@ -64,6 +64,8 @@ export function mapHeroSmsActivationRecordToView(
     activationStatusText: getHeroSmsStatusText(record.activation_status, record.sms_text),
     smsCode: record.sms_code,
     smsText: record.sms_text,
+    lastSmsCode: record.last_sms_code,
+    lastSmsText: record.last_sms_text,
     isActive: record.is_active,
     createdAt: record.created_at,
   };

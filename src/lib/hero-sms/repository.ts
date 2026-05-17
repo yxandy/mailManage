@@ -45,7 +45,7 @@ export async function createHeroSmsActivation(input: {
       can_get_another_sms: input.purchase.canGetAnotherSms,
       activation_time: input.purchase.activationTime,
       activation_end_time: input.purchase.activationEndTime,
-      activation_status: "1",
+      activation_status: "4",
       is_active: true,
     },
     { onConflict: "activation_id" },

@@ -65,6 +65,8 @@ create table if not exists public.hero_sms_activations (
   activation_status text,
   sms_code text,
   sms_text text,
+  last_sms_code text,
+  last_sms_text text,
   is_active boolean not null default true,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())

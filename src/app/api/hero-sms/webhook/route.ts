@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     await updateHeroSmsActivationByActivationId(activationId, {
       sms_text: smsText || record.sms_text,
       sms_code: smsCode || record.sms_code,
-      activation_status: smsText ? "4" : record.activation_status,
+      activation_status: smsText ? "2" : record.activation_status,
     });
 
     console.log("[hero-sms webhook] activation updated", {

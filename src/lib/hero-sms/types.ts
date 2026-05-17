@@ -87,6 +87,8 @@ export type HeroSmsActivationRecord = {
   activation_status: string | null;
   sms_code: string | null;
   sms_text: string | null;
+  last_sms_code: string | null;
+  last_sms_text: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -109,6 +111,8 @@ export type HeroSmsActivationView = {
   activationStatusText: string;
   smsCode: string | null;
   smsText: string | null;
+  lastSmsCode: string | null;
+  lastSmsText: string | null;
   isActive: boolean;
   createdAt: string;
 };

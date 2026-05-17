@@ -1143,8 +1143,12 @@ export function HeroSmsReadonlyClient({
                 <tbody>
                   {activations.map((item) => {
                     const remaining = getActivationRemainingMs(item);
-                    const primaryAction: ActivationAction = item.smsText ? "finish" : "cancel";
-                    const canRetrySms = Boolean(item.smsText) && item.canGetAnotherSms;
+                    const hasVisibleSms = Boolean(item.smsText);
+                    const primaryAction: ActivationAction = hasVisibleSms ? "finish" : "cancel";
+                    const canRetrySms =
+                      item.activationStatus === "2" &&
+                      hasVisibleSms &&
+                      item.canGetAnotherSms;
                     const smsDisplayText = item.smsText
                       ? showDigitsOnly
                         ? extractDigitsFromSmsText(item.smsText) || item.smsText
@@ -1198,7 +1202,11 @@ export function HeroSmsReadonlyClient({
                               </button>
                             </>
                           ) : (
-                            <span className="text-[var(--muted)]">等待短信</span>
+                            <span className="text-[var(--muted)]">
+                              {item.activationStatus === "3"
+                                ? "等待再次接收短信"
+                                : "等待接收短信"}
+                            </span>
                           )}
                         </td>
                         <td className="px-4 py-4">
