@@ -77,6 +77,7 @@ create table if not exists public.hero_sms_favorites (
   country_id integer not null,
   country_name text not null,
   operator_code text,
+  deleted_at timestamptz,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
   constraint hero_sms_favorites_unique_selection unique (service_code, country_id, operator_code)
@@ -105,6 +106,9 @@ create index if not exists idx_hero_sms_activations_created_at
 
 create index if not exists idx_hero_sms_favorites_created_at
   on public.hero_sms_favorites (created_at desc);
+
+create index if not exists idx_hero_sms_favorites_deleted_at
+  on public.hero_sms_favorites (deleted_at);
 
 create or replace function public.set_updated_at()
 returns trigger

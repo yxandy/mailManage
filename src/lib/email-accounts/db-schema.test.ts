@@ -61,6 +61,10 @@ test("hero_sms_favorites 表包含收藏唯一约束字段", () => {
   );
   assert.match(
     schemaSql,
+    /create table if not exists public\.hero_sms_favorites[\s\S]*\n\s*deleted_at\s+timestamptz,?/i,
+  );
+  assert.match(
+    schemaSql,
     /create table if not exists public\.hero_sms_favorites[\s\S]*constraint hero_sms_favorites_unique_selection unique \(service_code, country_id, operator_code\)/i,
   );
 });

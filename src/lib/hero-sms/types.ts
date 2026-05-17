@@ -127,6 +127,7 @@ export type HeroSmsFavoriteRecord = {
   country_id: number;
   country_name: string;
   operator_code: string | null;
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };

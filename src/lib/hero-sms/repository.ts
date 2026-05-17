@@ -108,6 +108,7 @@ export async function listHeroSmsFavorites(): Promise<HeroSmsFavoriteRecord[]> {
   const { data, error } = await supabase
     .from("hero_sms_favorites")
     .select("*")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -138,5 +139,20 @@ export async function createHeroSmsFavorite(input: {
 
   if (error) {
     throw new Error(`写入 HeroSMS 收藏失败：${error.message}`);
+  }
+}
+
+export async function softDeleteHeroSmsFavorite(id: string): Promise<void> {
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .from("hero_sms_favorites")
+    .update({
+      deleted_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new Error(`删除 HeroSMS 收藏失败：${error.message}`);
   }
 }

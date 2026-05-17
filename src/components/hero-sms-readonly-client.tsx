@@ -171,6 +171,7 @@ export function HeroSmsReadonlyClient({
   const [autoRetryAttempt, setAutoRetryAttempt] = useState(0);
   const [autoRetryCountdown, setAutoRetryCountdown] = useState(0);
   const [isStoppingRetry, setIsStoppingRetry] = useState(false);
+  const [isDeletingFavoriteId, setIsDeletingFavoriteId] = useState("");
   const stopRetryRef = useRef(false);
 
   const selectedServiceOption = services.find((service) => service.code === selectedService) ?? null;
@@ -399,6 +400,36 @@ export function HeroSmsReadonlyClient({
       setPurchaseError(error instanceof Error ? error.message : "收藏失败");
     } finally {
       setIsSavingFavorite(false);
+    }
+  }
+
+  async function handleDeleteFavorite(id: string) {
+    if (isDeletingFavoriteId) {
+      return;
+    }
+
+    setIsDeletingFavoriteId(id);
+    setPurchaseError("");
+
+    try {
+      const response = await fetch("/api/hero-sms/favorites", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id }),
+      });
+      const result = (await response.json()) as FavoritesResponse & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "删除收藏失败");
+      }
+
+      setFavorites(result.items);
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : "删除收藏失败");
+    } finally {
+      setIsDeletingFavoriteId("");
     }
   }
 
@@ -641,15 +672,11 @@ export function HeroSmsReadonlyClient({
   async function applyFavorite(item: HeroSmsFavoriteView) {
     setSelectedService(item.serviceCode);
     setSelectedCountry(String(item.countryId));
+    setSelectedOperator(item.operatorCode);
     setServiceKeyword("");
     setCountryKeyword("");
     setIsServicePickerOpen(false);
     setIsCountryPickerOpen(false);
-
-    await Promise.all([
-      loadOffer(item.serviceCode, String(item.countryId)),
-      loadOperators(String(item.countryId), item.operatorCode),
-    ]);
   }
 
   useEffect(() => {
@@ -725,17 +752,33 @@ export function HeroSmsReadonlyClient({
             <div className="mt-4 flex flex-wrap gap-3">
               {favorites.length > 0 ? (
                 favorites.map((favorite) => (
-                  <button
+                  <div
                     key={favorite.id}
-                    type="button"
-                    className="rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm transition hover:border-[var(--primary)] hover:text-[var(--primary)]"
-                    onClick={() => {
-                      void applyFavorite(favorite);
-                    }}
+                    className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-white px-4 py-2 text-sm"
                   >
-                    {favorite.serviceName} / {favorite.countryName} /{" "}
-                    {favorite.operatorCode || "任意运营商"}
-                  </button>
+                    <button
+                      type="button"
+                      className="transition hover:text-[var(--primary)]"
+                      onClick={() => {
+                        void applyFavorite(favorite);
+                      }}
+                    >
+                      {favorite.serviceName} / {favorite.countryName} /{" "}
+                      {favorite.operatorCode || "任意运营商"}
+                    </button>
+                    <button
+                      type="button"
+                      className="text-[var(--muted)] transition hover:text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => {
+                        void handleDeleteFavorite(favorite.id);
+                      }}
+                      disabled={isDeletingFavoriteId === favorite.id}
+                      aria-label="删除收藏"
+                      title="删除收藏"
+                    >
+                      {isDeletingFavoriteId === favorite.id ? "…" : "×"}
+                    </button>
+                  </div>
                 ))
               ) : (
                 <p className="text-sm text-[var(--muted)]">当前还没有收藏组合。</p>
