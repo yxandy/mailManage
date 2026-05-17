@@ -46,6 +46,7 @@ type FavoritesResponse = {
 };
 
 type ActivationAction = "cancel" | "finish";
+type PurchasePriceSource = "manual" | "min" | "default" | "retail";
 
 type PurchaseResponse = {
   error?: string;
@@ -145,6 +146,8 @@ export function HeroSmsReadonlyClient({
   const [isServicePickerOpen, setIsServicePickerOpen] = useState(false);
   const [isCountryPickerOpen, setIsCountryPickerOpen] = useState(false);
   const [purchasePrice, setPurchasePrice] = useState("");
+  const [purchasePriceSource, setPurchasePriceSource] =
+    useState<PurchasePriceSource>("manual");
   const [purchaseError, setPurchaseError] = useState("");
   const [activations, setActivations] = useState(initialActivations);
   const [favorites, setFavorites] = useState(initialFavorites);
@@ -246,6 +249,11 @@ export function HeroSmsReadonlyClient({
     } finally {
       setIsLoadingOffer(false);
     }
+  }
+
+  function applyOfferPrice(source: Exclude<PurchasePriceSource, "manual">, value: string) {
+    setPurchasePrice(value);
+    setPurchasePriceSource(source);
   }
 
   async function refreshAll() {
@@ -492,6 +500,7 @@ export function HeroSmsReadonlyClient({
           }
 
           setAutoRetryCountdown(0);
+          await loadOffer(selectedService, selectedCountry);
           continue;
         }
 
@@ -524,6 +533,26 @@ export function HeroSmsReadonlyClient({
   useEffect(() => {
     void loadOffer(selectedService, selectedCountry);
   }, [selectedService, selectedCountry]);
+
+  useEffect(() => {
+    if (!offer) {
+      return;
+    }
+
+    if (purchasePriceSource === "min") {
+      setPurchasePrice(offer.minPrice);
+      return;
+    }
+
+    if (purchasePriceSource === "default") {
+      setPurchasePrice(offer.defaultPrice);
+      return;
+    }
+
+    if (purchasePriceSource === "retail") {
+      setPurchasePrice(offer.retailPrice);
+    }
+  }, [offer, purchasePriceSource]);
 
   useEffect(() => {
     void loadOperators(selectedCountry);
@@ -908,7 +937,7 @@ export function HeroSmsReadonlyClient({
                   <button
                     type="button"
                     className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
-                    onClick={() => setPurchasePrice(offer.minPrice)}
+                    onClick={() => applyOfferPrice("min", offer.minPrice)}
                   >
                     <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
                       最低个人价
@@ -919,7 +948,7 @@ export function HeroSmsReadonlyClient({
                   <button
                     type="button"
                     className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
-                    onClick={() => setPurchasePrice(offer.defaultPrice)}
+                    onClick={() => applyOfferPrice("default", offer.defaultPrice)}
                   >
                     <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
                       默认价
@@ -930,7 +959,7 @@ export function HeroSmsReadonlyClient({
                   <button
                     type="button"
                     className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
-                    onClick={() => setPurchasePrice(offer.retailPrice)}
+                    onClick={() => applyOfferPrice("retail", offer.retailPrice)}
                   >
                     <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
                       零售价
@@ -955,7 +984,10 @@ export function HeroSmsReadonlyClient({
                   <span className="text-[var(--muted)]">购置价格</span>
                   <input
                     value={purchasePrice}
-                    onChange={(event) => setPurchasePrice(event.target.value)}
+                    onChange={(event) => {
+                      setPurchasePrice(event.target.value);
+                      setPurchasePriceSource("manual");
+                    }}
                     placeholder={
                       offer ? `例如 ${offer.minPrice}` : "请输入你希望的最高购置价格"
                     }
