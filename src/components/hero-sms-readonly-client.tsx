@@ -971,7 +971,12 @@ export function HeroSmsReadonlyClient({
                             {remaining === null ? "待确认" : formatCountdown(remaining)}
                           </p>
                         </td>
-                        <td className="px-4 py-4 font-medium">{item.activationStatusText}</td>
+                        <td className="px-4 py-4">
+                          <p className="font-medium">{item.activationStatusText}</p>
+                          <p className="mt-1 text-xs text-[var(--muted)]">
+                            原始状态: {item.activationStatus || "空"}
+                          </p>
+                        </td>
                         <td className="px-4 py-4 font-medium">
                           {item.operatorCode || "任意运营商"}
                         </td>
