@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 
-import { getRequiredEnv } from "@/lib/env";
 import type { HeroSmsWebhookPayload } from "@/lib/hero-sms/types";
 import {
   findHeroSmsActivationByActivationId,
@@ -9,12 +8,29 @@ import {
 
 export const runtime = "nodejs";
 
-function isAuthorized(request: Request): boolean {
-  const expectedSecret = getRequiredEnv("HERO_SMS_WEBHOOK_SECRET");
-  const url = new URL(request.url);
-  const secret = url.searchParams.get("secret")?.trim() ?? "";
+const HERO_SMS_WEBHOOK_ALLOWED_IPS = new Set([
+  "84.32.223.53",
+  "185.138.88.87",
+]);
 
-  return secret === expectedSecret;
+function getRequestIp(request: Request): string {
+  const forwardedFor = request.headers.get("x-forwarded-for")?.trim() ?? "";
+
+  if (forwardedFor) {
+    const firstIp = forwardedFor.split(",")[0]?.trim();
+
+    if (firstIp) {
+      return firstIp;
+    }
+  }
+
+  return request.headers.get("x-real-ip")?.trim() ?? "";
+}
+
+function isAuthorized(request: Request): boolean {
+  const requestIp = getRequestIp(request);
+
+  return HERO_SMS_WEBHOOK_ALLOWED_IPS.has(requestIp);
 }
 
 export async function POST(request: Request) {
