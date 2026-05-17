@@ -45,7 +45,7 @@ type FavoritesResponse = {
   items: HeroSmsFavoriteView[];
 };
 
-type ActivationAction = "cancel" | "finish";
+type ActivationAction = "cancel" | "finish" | "retry-sms";
 type PurchasePriceSource = "manual" | "min" | "default" | "tier-min";
 
 type PurchaseResponse = {
@@ -637,7 +637,11 @@ export function HeroSmsReadonlyClient({
     }
 
     const confirmed = window.confirm(
-      action === "cancel" ? "确认取消这条号码吗？" : "确认完成这条号码吗？",
+      action === "cancel"
+        ? "确认取消这条号码吗？"
+        : action === "finish"
+          ? "确认完成这条号码吗？"
+          : "确认开始等待下一条短信吗？",
     );
 
     if (!confirmed) {
@@ -1139,7 +1143,8 @@ export function HeroSmsReadonlyClient({
                 <tbody>
                   {activations.map((item) => {
                     const remaining = getActivationRemainingMs(item);
-                    const action: ActivationAction = item.smsText ? "finish" : "cancel";
+                    const primaryAction: ActivationAction = item.smsText ? "finish" : "cancel";
+                    const canRetrySms = Boolean(item.smsText) && item.canGetAnotherSms;
                     const smsDisplayText = item.smsText
                       ? showDigitsOnly
                         ? extractDigitsFromSmsText(item.smsText) || item.smsText
@@ -1197,18 +1202,30 @@ export function HeroSmsReadonlyClient({
                           )}
                         </td>
                         <td className="px-4 py-4">
-                          <button
-                            type="button"
-                            className="rounded-2xl border border-[var(--border)] px-4 py-2 text-sm font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
-                            onClick={() => void handleActivationAction(item, action)}
-                            disabled={actioningActivationId === item.id}
-                          >
-                            {actioningActivationId === item.id
-                              ? "处理中..."
-                              : action === "cancel"
-                                ? "取消"
-                                : "完成"}
-                          </button>
+                          <div className="flex flex-wrap gap-2">
+                            {canRetrySms ? (
+                              <button
+                                type="button"
+                                className="rounded-2xl border border-[var(--border)] px-4 py-2 text-sm font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
+                                onClick={() => void handleActivationAction(item, "retry-sms")}
+                                disabled={actioningActivationId === item.id}
+                              >
+                                {actioningActivationId === item.id ? "处理中..." : "再次接收"}
+                              </button>
+                            ) : null}
+                            <button
+                              type="button"
+                              className="rounded-2xl border border-[var(--border)] px-4 py-2 text-sm font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
+                              onClick={() => void handleActivationAction(item, primaryAction)}
+                              disabled={actioningActivationId === item.id}
+                            >
+                              {actioningActivationId === item.id
+                                ? "处理中..."
+                                : primaryAction === "cancel"
+                                  ? "取消"
+                                  : "完成"}
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

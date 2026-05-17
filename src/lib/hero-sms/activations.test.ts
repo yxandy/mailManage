@@ -72,6 +72,10 @@ test("HeroSMS 取消与完成状态会映射为中文文案", () => {
   assert.equal(getHeroSmsStatusText("6", null), "已完成");
 });
 
+test("HeroSMS 再次接收状态会映射为等待再次短信", () => {
+  assert.equal(getHeroSmsStatusText("3", null), "等待再次短信");
+});
+
 test("HeroSMS 短信内容可提取数字部分", () => {
   assert.equal(
     extractDigitsFromSmsText("Your verification code is 123456, valid for 10 minutes."),

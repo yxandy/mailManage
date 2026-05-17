@@ -459,12 +459,40 @@ async function runHeroSmsActivationAction(
   }
 }
 
+async function setHeroSmsActivationStatus(
+  activationId: string,
+  status: 3 | 6 | 8,
+): Promise<void> {
+  const { text, json } = await fetchCompatAny(
+    new URLSearchParams({
+      action: "setStatus",
+      id: activationId,
+      status: String(status),
+    }),
+  );
+
+  if (json?.title) {
+    throw new Error(`${json.title}${json.details ? `：${json.details}` : ""}`);
+  }
+
+  const expected =
+    status === 3 ? "ACCESS_RETRY_GET" : status === 6 ? "ACCESS_ACTIVATION" : "ACCESS_CANCEL";
+
+  if (text && text !== expected) {
+    throw new Error(`HeroSMS setStatus 返回异常：${text}`);
+  }
+}
+
 export async function cancelHeroSmsActivation(activationId: string): Promise<void> {
   await runHeroSmsActivationAction("cancelActivation", activationId);
 }
 
 export async function finishHeroSmsActivation(activationId: string): Promise<void> {
   await runHeroSmsActivationAction("finishActivation", activationId);
+}
+
+export async function requestAnotherHeroSms(activationId: string): Promise<void> {
+  await setHeroSmsActivationStatus(activationId, 3);
 }
 
 export async function syncHeroSmsActivations(

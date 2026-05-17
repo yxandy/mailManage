@@ -4,6 +4,7 @@ import { getCurrentSession } from "@/lib/auth/auth";
 import {
   cancelHeroSmsActivation,
   finishHeroSmsActivation,
+  requestAnotherHeroSms,
 } from "@/lib/hero-sms/client";
 import {
   getHeroSmsActivationById,
@@ -25,11 +26,11 @@ export async function POST(
   try {
     const { id } = await context.params;
     const body = (await request.json()) as {
-      action?: "cancel" | "finish";
+      action?: "cancel" | "finish" | "retry-sms";
     };
     const action = body.action;
 
-    if (action !== "cancel" && action !== "finish") {
+    if (action !== "cancel" && action !== "finish" && action !== "retry-sms") {
       return NextResponse.json({ error: "缺少有效的 action 参数" }, { status: 400 });
     }
 
@@ -41,14 +42,25 @@ export async function POST(
 
     if (action === "cancel") {
       await cancelHeroSmsActivation(record.activation_id);
-    } else {
+      await updateHeroSmsActivationByActivationId(record.activation_id, {
+        activation_status: "8",
+        is_active: false,
+      });
+    } else if (action === "finish") {
       await finishHeroSmsActivation(record.activation_id);
+      await updateHeroSmsActivationByActivationId(record.activation_id, {
+        activation_status: "6",
+        is_active: false,
+      });
+    } else {
+      await requestAnotherHeroSms(record.activation_id);
+      await updateHeroSmsActivationByActivationId(record.activation_id, {
+        activation_status: "3",
+        sms_code: null,
+        sms_text: null,
+        is_active: true,
+      });
     }
-
-    await updateHeroSmsActivationByActivationId(record.activation_id, {
-      activation_status: action === "cancel" ? "8" : "6",
-      is_active: false,
-    });
 
     return NextResponse.json({ ok: true });
   } catch (error) {
