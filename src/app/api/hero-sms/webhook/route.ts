@@ -9,6 +9,20 @@ import {
 
 export const runtime = "nodejs";
 
+function getRequestIp(request: Request): string {
+  const forwardedFor = request.headers.get("x-forwarded-for")?.trim() ?? "";
+
+  if (forwardedFor) {
+    const firstIp = forwardedFor.split(",")[0]?.trim();
+
+    if (firstIp) {
+      return firstIp;
+    }
+  }
+
+  return request.headers.get("x-real-ip")?.trim() ?? "";
+}
+
 function buildWebhookLogContext(request: Request) {
   return {
     requestIp: getRequestIp(request),
