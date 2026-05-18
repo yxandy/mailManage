@@ -984,7 +984,7 @@ export function HeroSmsReadonlyClient({
             </div>
           ) : null}
 
-          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(220px,0.75fr)_minmax(160px,0.45fr)_minmax(480px,1.35fr)]">
+          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(220px,0.75fr)_minmax(0,0.45fr)_minmax(480px,1.35fr)]">
             <div className="grid gap-4">
               {offer ? (
                 <>
@@ -1014,7 +1014,7 @@ export function HeroSmsReadonlyClient({
               ) : null}
             </div>
 
-            <div className="flex flex-col justify-between gap-3 rounded-[24px] border border-[var(--border)] bg-white px-5 py-5">
+            <div className="min-w-0 flex flex-col justify-between gap-3 rounded-[24px] border border-[var(--border)] bg-white px-5 py-5">
               <button
                 type="button"
                 className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
@@ -1032,7 +1032,7 @@ export function HeroSmsReadonlyClient({
                     setPurchasePriceSource("manual");
                   }}
                   placeholder={offer ? `例如 ${offer.minPrice}` : "请输入你希望的最高购置价格"}
-                  className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                  className="w-full min-w-0 rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
                 />
               </label>
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
@@ -1172,9 +1172,6 @@ export function HeroSmsReadonlyClient({
                         </td>
                         <td className="px-4 py-4">
                           <p className="font-medium">{item.activationStatusText}</p>
-                          <p className="mt-1 text-xs text-[var(--muted)]">
-                            原始状态: {item.activationStatus || "空"}
-                          </p>
                         </td>
                         <td className="px-4 py-4 font-medium">
                           {item.operatorCode || "任意运营商"}
