@@ -181,6 +181,9 @@ export function HeroSmsReadonlyClient({
     countries.find((country) => String(country.id) === selectedCountry) ?? null;
   const serviceMatches = filterServices(services, serviceKeyword);
   const countryMatches = filterCountries(countries, countryKeyword);
+  const shouldAutoPollActivations = activations.some(
+    (item) => item.activationStatus === "3" || item.activationStatus === "4",
+  );
 
   async function loadOperators(country: string, preferredOperator = "") {
     if (!country) {
@@ -646,6 +649,10 @@ export function HeroSmsReadonlyClient({
         return;
       }
 
+      if (!shouldAutoPollActivations) {
+        return;
+      }
+
       if (isRefreshingActivations || isPollingActivations || actioningActivationId || isRefreshing) {
         return;
       }
@@ -656,7 +663,13 @@ export function HeroSmsReadonlyClient({
     return () => {
       window.clearInterval(timer);
     };
-  }, [actioningActivationId, isPollingActivations, isRefreshing, isRefreshingActivations]);
+  }, [
+    actioningActivationId,
+    isPollingActivations,
+    isRefreshing,
+    isRefreshingActivations,
+    shouldAutoPollActivations,
+  ]);
 
   function getActivationRemainingMs(item: HeroSmsActivationView): number | null {
     const activationStart = new Date(item.activationTime).getTime();
@@ -1257,7 +1270,7 @@ export function HeroSmsReadonlyClient({
                               >
                                 {smsDisplayText}
                               </button>
-                              {isPollingActivations ? (
+                              {isPollingActivations && shouldAutoPollActivations ? (
                                 <span className="mt-2 block text-xs text-[var(--muted)]">
                                   正在检查最新短信...
                                 </span>
@@ -1270,7 +1283,7 @@ export function HeroSmsReadonlyClient({
                                   ? "等待再次接收短信"
                                   : "等待接收短信"}
                               </span>
-                              {isPollingActivations ? (
+                              {isPollingActivations && shouldAutoPollActivations ? (
                                 <span className="mt-2 block text-xs text-[var(--muted)]">
                                   正在检查最新短信...
                                 </span>
