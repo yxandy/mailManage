@@ -55,6 +55,7 @@ type PurchaseResponse = {
 
 const HERO_SMS_AUTO_RETRY_INTERVAL_SECONDS = 8;
 const HERO_SMS_AUTO_RETRY_MAX_ATTEMPTS = 75;
+const HERO_SMS_ACTIVATIONS_AUTO_REFRESH_INTERVAL_MS = 6000;
 
 const CURRENCY_LABELS: Record<number, string> = {
   840: "USD",
@@ -610,6 +611,24 @@ export function HeroSmsReadonlyClient({
       window.clearInterval(timer);
     };
   }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") {
+        return;
+      }
+
+      if (isRefreshingActivations || actioningActivationId || isRefreshing) {
+        return;
+      }
+
+      void refreshActivations();
+    }, HERO_SMS_ACTIVATIONS_AUTO_REFRESH_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [actioningActivationId, isRefreshing, isRefreshingActivations]);
 
   function getActivationRemainingMs(item: HeroSmsActivationView): number | null {
     const activationStart = new Date(item.activationTime).getTime();
