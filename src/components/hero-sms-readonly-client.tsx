@@ -1186,17 +1186,17 @@ export function HeroSmsReadonlyClient({
             </div>
           ) : (
             <div className="mt-5 overflow-x-auto rounded-[24px] border border-[var(--border)] bg-white">
-              <table className="min-w-full border-collapse text-sm">
+              <table className="min-w-full table-fixed border-separate border-spacing-0 text-sm">
                 <thead className="bg-[var(--panel-strong)] text-left text-[var(--muted)]">
                   <tr>
-                    <th className="px-4 py-3 font-medium">号码</th>
-                    <th className="px-4 py-3 font-medium">实际价格</th>
-                    <th className="px-4 py-3 font-medium">剩余时间</th>
-                    <th className="px-4 py-3 font-medium">当前状态</th>
-                    <th className="px-4 py-3 font-medium">运营商</th>
-                    <th className="px-4 py-3 font-medium">可重复接收短信</th>
-                    <th className="px-4 py-3 font-medium">最新短信</th>
-                    <th className="px-4 py-3 font-medium">操作</th>
+                    <th className="w-[15%] px-4 py-3 font-medium">号码</th>
+                    <th className="w-[12%] px-4 py-3 font-medium">实际价格</th>
+                    <th className="w-[12%] px-4 py-3 font-medium">剩余时间</th>
+                    <th className="w-[14%] px-4 py-3 font-medium">当前状态</th>
+                    <th className="w-[10%] px-4 py-3 font-medium">运营商</th>
+                    <th className="w-[12%] px-4 py-3 font-medium">可重复接收短信</th>
+                    <th className="w-[15%] px-4 py-3 font-medium">最新短信</th>
+                    <th className="w-[10%] px-4 py-3 font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1225,40 +1225,40 @@ export function HeroSmsReadonlyClient({
                       : "";
 
                     return (
-                      <tr key={item.id} className="border-t border-[var(--border)] align-top">
-                        <td className="px-4 py-2.5">
+                      <tr key={item.id} className="h-14 border-t border-[var(--border)]">
+                        <td className="border-t border-[var(--border)] px-4 py-2 align-middle">
                           <button
                             type="button"
-                            className="cursor-pointer text-left font-semibold transition hover:opacity-75"
+                            className="block max-w-full cursor-pointer truncate text-left font-semibold transition hover:opacity-75"
                             onClick={() => copyText(item.phoneNumber, `activation-phone-${item.id}`)}
                             title="点击复制号码"
                           >
                             {item.phoneNumber}
                           </button>
                         </td>
-                        <td className="px-4 py-2.5 font-medium">
+                        <td className="border-t border-[var(--border)] px-4 py-2 align-middle font-medium">
                           {item.activationCost} {item.currencyLabel}
                         </td>
-                        <td className="px-4 py-2.5">
-                          <p className="font-medium">
+                        <td className="border-t border-[var(--border)] px-4 py-2 align-middle">
+                          <p className="font-medium tabular-nums">
                             {remaining === null ? "待确认" : formatCountdown(remaining)}
                           </p>
                         </td>
-                        <td className="px-4 py-2.5">
+                        <td className="border-t border-[var(--border)] px-4 py-2 align-middle">
                           <p className="font-medium">{item.activationStatusText}</p>
                         </td>
-                        <td className="px-4 py-2.5 font-medium">
+                        <td className="border-t border-[var(--border)] px-4 py-2 align-middle font-medium">
                           {item.operatorCode || "任意运营商"}
                         </td>
-                        <td className="px-4 py-2.5 font-medium">
+                        <td className="border-t border-[var(--border)] px-4 py-2 align-middle font-medium">
                           {item.canGetAnotherSms ? "是" : "否"}
                         </td>
-                        <td className="max-w-sm px-4 py-2.5">
+                        <td className="border-t border-[var(--border)] px-4 py-2 align-middle">
                           {item.smsText ? (
                             <>
                               <button
                                 type="button"
-                                className="cursor-pointer text-left leading-7 transition hover:opacity-75"
+                                className="block max-w-full cursor-pointer truncate text-left transition hover:opacity-75"
                                 onClick={() =>
                                   copyText(smsDisplayText, `activation-sms-${item.id}`)
                                 }
@@ -1277,12 +1277,12 @@ export function HeroSmsReadonlyClient({
                             </>
                           )}
                         </td>
-                        <td className="px-4 py-2.5">
-                          <div className="flex flex-wrap gap-2">
+                        <td className="border-t border-[var(--border)] px-4 py-2 align-middle">
+                          <div className="flex min-h-8 flex-wrap items-center gap-2">
                             {canRetrySms ? (
                               <button
                                 type="button"
-                                className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
+                                className="h-8 rounded-xl border border-[var(--border)] px-3 text-xs font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
                                 onClick={() => void handleActivationAction(item, "retry-sms")}
                                 disabled={actioningActivationId === item.id}
                               >
@@ -1291,7 +1291,7 @@ export function HeroSmsReadonlyClient({
                             ) : null}
                             <button
                               type="button"
-                              className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
+                              className="h-8 rounded-xl border border-[var(--border)] px-3 text-xs font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
                               onClick={() => void handleActivationAction(item, primaryAction)}
                               disabled={actioningActivationId === item.id}
                             >
