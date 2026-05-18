@@ -181,6 +181,7 @@ export function HeroSmsReadonlyClient({
     countries.find((country) => String(country.id) === selectedCountry) ?? null;
   const serviceMatches = filterServices(services, serviceKeyword);
   const countryMatches = filterCountries(countries, countryKeyword);
+  const errorLogs = [pageError, operatorError, offerError, purchaseError].filter(Boolean);
   const shouldAutoPollActivations = activations.some(
     (item) => item.activationStatus === "3" || item.activationStatus === "4",
   );
@@ -827,7 +828,9 @@ export function HeroSmsReadonlyClient({
                       ? `${selectedServiceOption.name} (${selectedServiceOption.code})`
                       : "点击搜索服务"}
                   </span>
-                  <span className="text-lg leading-none text-[var(--muted)]">⌕</span>
+                  <span className="inline-flex w-7 justify-center text-2xl leading-none text-[var(--muted)]">
+                    ⌕
+                  </span>
                 </button>
                 {isServicePickerOpen ? (
                   <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 rounded-[24px] border border-[var(--border)] bg-[var(--panel)] p-3 shadow-[var(--shadow)]">
@@ -894,7 +897,9 @@ export function HeroSmsReadonlyClient({
                       ? `${selectedCountryOption.name} (${selectedCountryOption.id})`
                       : "点击搜索国家"}
                   </span>
-                  <span className="text-lg leading-none text-[var(--muted)]">⌕</span>
+                  <span className="inline-flex w-7 justify-center text-2xl leading-none text-[var(--muted)]">
+                    ⌕
+                  </span>
                 </button>
                 {isCountryPickerOpen ? (
                   <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 rounded-[24px] border border-[var(--border)] bg-[var(--panel)] p-3 shadow-[var(--shadow)]">
@@ -940,21 +945,26 @@ export function HeroSmsReadonlyClient({
             </div>
             <label className="grid gap-2 text-sm">
               <span className="text-[var(--muted)]">运营商</span>
-              <select
-                value={selectedOperator}
-                onChange={(event) => setSelectedOperator(event.target.value)}
-                className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-base"
-                disabled={isLoadingOperators}
-              >
-                <option value="">
-                  {isLoadingOperators ? "运营商读取中..." : "任意运营商"}
-                </option>
-                {operators.map((operator) => (
-                  <option key={operator.code} value={operator.code}>
-                    {operator.name}
+              <div className="relative">
+                <select
+                  value={selectedOperator}
+                  onChange={(event) => setSelectedOperator(event.target.value)}
+                  className="w-full appearance-none rounded-2xl border border-[var(--border)] bg-white px-4 py-3 pr-12 text-base"
+                  disabled={isLoadingOperators}
+                >
+                  <option value="">
+                    {isLoadingOperators ? "运营商读取中..." : "任意运营商"}
                   </option>
-                ))}
-              </select>
+                  {operators.map((operator) => (
+                    <option key={operator.code} value={operator.code}>
+                      {operator.name}
+                    </option>
+                  ))}
+                </select>
+                <span className="pointer-events-none absolute right-4 top-1/2 inline-flex w-7 -translate-y-1/2 justify-center text-2xl leading-none text-[var(--muted)]">
+                  ⌄
+                </span>
+              </div>
             </label>
             <div className="grid items-end">
               <button
@@ -967,24 +977,6 @@ export function HeroSmsReadonlyClient({
               </button>
             </div>
           </div>
-
-          {pageError ? (
-            <p className="mt-4 rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
-              {pageError}
-            </p>
-          ) : null}
-
-          {operatorError ? (
-            <p className="mt-4 rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
-              {operatorError}
-            </p>
-          ) : null}
-
-          {offerError ? (
-            <p className="mt-5 rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
-              {offerError}
-            </p>
-          ) : null}
 
           {!isLoadingOffer && !offerError && !offer ? (
             <div className="mt-5 rounded-[24px] border border-dashed border-[var(--border)] bg-white px-5 py-8 text-sm text-[var(--muted)]">
@@ -1064,11 +1056,6 @@ export function HeroSmsReadonlyClient({
                 ) : null}
               </div>
 
-              {purchaseError ? (
-                <p className="rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
-                  {purchaseError}
-                </p>
-              ) : null}
             </div>
 
             <aside className="rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
@@ -1082,8 +1069,13 @@ export function HeroSmsReadonlyClient({
                 ) : null}
               </div>
               <div className="mt-3 max-h-[180px] overflow-y-auto pr-1 text-sm text-[var(--muted)]">
-                {purchaseLogs.length > 0 ? (
+                {errorLogs.length > 0 || purchaseLogs.length > 0 ? (
                   <div className="flex flex-col gap-3">
+                    {errorLogs.map((log, index) => (
+                      <p key={`error-${index}-${log}`} className="text-[var(--danger)]">
+                        {log}
+                      </p>
+                    ))}
                     {purchaseLogs.map((log, index) => (
                       <p key={`${index}-${log}`}>{log}</p>
                     ))}
