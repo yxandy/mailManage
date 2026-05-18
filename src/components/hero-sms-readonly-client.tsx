@@ -203,8 +203,8 @@ export function HeroSmsReadonlyClient({
       }))
     : [];
   const visibleTierPriceOptions = showAllTierPrices
-    ? tierPriceOptions
-    : tierPriceOptions.slice(0, 6);
+    ? [...tierPriceOptions].reverse()
+    : tierPriceOptions.slice(0, 4).reverse();
   const shouldAutoPollActivations = activations.some(
     (item) => item.activationStatus === "3" || item.activationStatus === "4",
   );
@@ -1056,7 +1056,7 @@ export function HeroSmsReadonlyClient({
                       >
                         {showAllTierPrices
                           ? "收起价格"
-                          : `展开更多价格（${tierPriceOptions.length - 6}）`}
+                          : `展开更多价格（${tierPriceOptions.length - 4}）`}
                       </button>
                     ) : null}
                   </div>
