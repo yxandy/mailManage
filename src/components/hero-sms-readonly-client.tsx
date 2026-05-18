@@ -366,8 +366,8 @@ export function HeroSmsReadonlyClient({
 
     try {
       await fetchActivationsList();
-    } catch (error) {
-      setPurchaseError(error instanceof Error ? error.message : "查询活动列表失败");
+    } catch {
+      // 自动轮询只做静默同步，避免每 3 秒刷新时打扰当前操作日志。
     } finally {
       setIsPollingActivations(false);
     }
@@ -1226,7 +1226,7 @@ export function HeroSmsReadonlyClient({
 
                     return (
                       <tr key={item.id} className="border-t border-[var(--border)] align-top">
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-2.5">
                           <button
                             type="button"
                             className="cursor-pointer text-left font-semibold transition hover:opacity-75"
@@ -1236,24 +1236,24 @@ export function HeroSmsReadonlyClient({
                             {item.phoneNumber}
                           </button>
                         </td>
-                        <td className="px-4 py-4 font-medium">
+                        <td className="px-4 py-2.5 font-medium">
                           {item.activationCost} {item.currencyLabel}
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-2.5">
                           <p className="font-medium">
                             {remaining === null ? "待确认" : formatCountdown(remaining)}
                           </p>
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-2.5">
                           <p className="font-medium">{item.activationStatusText}</p>
                         </td>
-                        <td className="px-4 py-4 font-medium">
+                        <td className="px-4 py-2.5 font-medium">
                           {item.operatorCode || "任意运营商"}
                         </td>
-                        <td className="px-4 py-4 font-medium">
+                        <td className="px-4 py-2.5 font-medium">
                           {item.canGetAnotherSms ? "是" : "否"}
                         </td>
-                        <td className="max-w-sm px-4 py-4">
+                        <td className="max-w-sm px-4 py-2.5">
                           {item.smsText ? (
                             <>
                               <button
@@ -1266,11 +1266,6 @@ export function HeroSmsReadonlyClient({
                               >
                                 {smsDisplayText}
                               </button>
-                              {isPollingActivations && shouldAutoPollActivations ? (
-                                <span className="mt-2 block text-xs text-[var(--muted)]">
-                                  正在检查最新短信...
-                                </span>
-                              ) : null}
                             </>
                           ) : (
                             <>
@@ -1279,20 +1274,15 @@ export function HeroSmsReadonlyClient({
                                   ? "等待再次接收短信"
                                   : "等待接收短信"}
                               </span>
-                              {isPollingActivations && shouldAutoPollActivations ? (
-                                <span className="mt-2 block text-xs text-[var(--muted)]">
-                                  正在检查最新短信...
-                                </span>
-                              ) : null}
                             </>
                           )}
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-2.5">
                           <div className="flex flex-wrap gap-2">
                             {canRetrySms ? (
                               <button
                                 type="button"
-                                className="rounded-2xl border border-[var(--border)] px-4 py-2 text-sm font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
+                                className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
                                 onClick={() => void handleActivationAction(item, "retry-sms")}
                                 disabled={actioningActivationId === item.id}
                               >
@@ -1301,7 +1291,7 @@ export function HeroSmsReadonlyClient({
                             ) : null}
                             <button
                               type="button"
-                              className="rounded-2xl border border-[var(--border)] px-4 py-2 text-sm font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
+                              className="rounded-xl border border-[var(--border)] px-3 py-1.5 text-xs font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
                               onClick={() => void handleActivationAction(item, primaryAction)}
                               disabled={actioningActivationId === item.id}
                             >
