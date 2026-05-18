@@ -50,7 +50,7 @@
 3. HeroSMS 购买、状态、生命周期动作优先以官方接口真实返回为准，不得凭经验硬编码固定有效时长、固定状态流或固定价格规则。
 4. HeroSMS 相关接口说明优先参考仓库内文档 `docs/herosms-api-cn.json` 以及官网文档，不在 `AGENTS.md` 中直接维护大段接口细节。
 5. HeroSMS 的 API Key 只允许通过环境变量提供，不得写入仓库跟踪文件、测试样例或文档正文。
-6. HeroSMS webhook 路由固定为 `POST /api/hero-sms/webhook`，默认仅接受官方白名单 IP：`84.32.223.53`、`185.138.88.87`，不要再追加 `secret` query 参数方案。
+6. HeroSMS webhook 路由固定为 `POST /api/hero-sms/webhook`，当前不再依赖 `secret` 或来源 IP 白名单，而是仅在本地存在活动中的 HeroSMS 号码时才接受回调，并要求 payload 中的 `activationId` 能匹配到当前活动记录。
 7. HeroSMS webhook 只负责写入短信内容与验证码，不在 webhook 到达时直接结束活动记录。
 8. 对外部程序开放的内部接口优先复用 `Bearer Token` 方案，当前已存在 `POST /api/internal/hme-ingest` 和 `GET /api/internal/hero-sms-active` 两类示例。
 

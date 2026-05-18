@@ -3,15 +3,11 @@ import { NextResponse } from "next/server";
 import type { HeroSmsWebhookPayload } from "@/lib/hero-sms/types";
 import {
   findHeroSmsActivationByActivationId,
+  listActiveHeroSmsActivations,
   updateHeroSmsActivationByActivationId,
 } from "@/lib/hero-sms/repository";
 
 export const runtime = "nodejs";
-
-const HERO_SMS_WEBHOOK_ALLOWED_IPS = new Set([
-  "84.32.223.53",
-  "185.138.88.87",
-]);
 
 function buildWebhookLogContext(request: Request) {
   return {
@@ -23,41 +19,11 @@ function buildWebhookLogContext(request: Request) {
   };
 }
 
-function getRequestIp(request: Request): string {
-  const forwardedFor = request.headers.get("x-forwarded-for")?.trim() ?? "";
-
-  if (forwardedFor) {
-    const firstIp = forwardedFor.split(",")[0]?.trim();
-
-    if (firstIp) {
-      return firstIp;
-    }
-  }
-
-  return request.headers.get("x-real-ip")?.trim() ?? "";
-}
-
-function isAuthorized(request: Request): boolean {
-  const requestIp = getRequestIp(request);
-
-  return HERO_SMS_WEBHOOK_ALLOWED_IPS.has(requestIp);
-}
-
 export async function POST(request: Request) {
   const requestContext = buildWebhookLogContext(request);
-  const authorized = isAuthorized(request);
-
   console.log("[hero-sms webhook] incoming request", {
     ...requestContext,
-    authorized,
-    allowedIps: Array.from(HERO_SMS_WEBHOOK_ALLOWED_IPS),
   });
-
-  if (!authorized) {
-    console.warn("[hero-sms webhook] unauthorized request", requestContext);
-
-    return NextResponse.json({ error: "鉴权失败" }, { status: 401 });
-  }
 
   try {
     const body = (await request.json()) as HeroSmsWebhookPayload;
@@ -86,20 +52,35 @@ export async function POST(request: Request) {
           : String(body.receivedAt).trim(),
     });
 
+    const activeRecords = await listActiveHeroSmsActivations();
+
+    console.log("[hero-sms webhook] active window check", {
+      activeCount: activeRecords.length,
+      activeActivationIds: activeRecords.map((item) => item.activation_id),
+    });
+
+    if (activeRecords.length === 0) {
+      console.warn("[hero-sms webhook] no active activations, reject webhook");
+
+      return NextResponse.json({ error: "当前没有活动中的号码，拒绝接收 webhook" }, { status: 403 });
+    }
+
     if (!activationId) {
       console.warn("[hero-sms webhook] missing activationId");
 
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ error: "缺少 activationId" }, { status: 400 });
     }
 
     const record = await findHeroSmsActivationByActivationId(activationId);
 
-    if (!record) {
-      console.warn("[hero-sms webhook] activation record not found", {
+    if (!record || !record.is_active) {
+      console.warn("[hero-sms webhook] activation record not active or not found", {
         activationId,
+        found: Boolean(record),
+        isActive: record?.is_active ?? false,
       });
 
-      return NextResponse.json({ ok: true });
+      return NextResponse.json({ error: "activationId 未匹配到当前活动中的号码" }, { status: 403 });
     }
 
     const smsText = typeof body.text === "string" ? body.text.trim() : "";
