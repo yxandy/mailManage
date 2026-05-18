@@ -984,7 +984,7 @@ export function HeroSmsReadonlyClient({
             </div>
           ) : null}
 
-          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(220px,0.75fr)_minmax(280px,0.9fr)_360px]">
+          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(220px,0.75fr)_minmax(160px,0.45fr)_minmax(480px,1.35fr)]">
             <div className="grid gap-4">
               {offer ? (
                 <>
@@ -1060,7 +1060,7 @@ export function HeroSmsReadonlyClient({
 
             <aside className="rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium text-[var(--text)]">自动购买日志</p>
+                <p className="text-sm font-medium text-[var(--text)]">日志</p>
                 {isPurchasing && autoRetryAttempt > 0 ? (
                   <p className="text-xs text-[var(--muted)] text-right">
                     当前第 {autoRetryAttempt} 次尝试
