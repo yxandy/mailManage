@@ -7,3 +7,5 @@ import "../lib/email-accounts/status.test.ts";
 import "../lib/email-accounts/stats.test.ts";
 import "../lib/hero-sms/activations.test.ts";
 import "../lib/hero-sms/client.test.ts";
+import "../lib/notifications/hero-sms.test.ts";
+import "../lib/notifications/retry.test.ts";

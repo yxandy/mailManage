@@ -53,6 +53,15 @@
 6. HeroSMS webhook 路由固定为 `POST /api/hero-sms/webhook`，当前不再依赖 `secret` 或来源 IP 白名单，而是仅在本地存在活动中的 HeroSMS 号码时才接受回调，并要求 payload 中的 `activationId` 能匹配到当前活动记录。
 7. HeroSMS webhook 只负责写入短信内容与验证码，不在 webhook 到达时直接结束活动记录。
 8. 对外部程序开放的内部接口优先复用 `Bearer Token` 方案，当前已存在 `POST /api/internal/hme-ingest` 和 `GET /api/internal/hero-sms-active` 两类示例。
+9. 当前已验证的 HeroSMS 状态语义为：
+   - `4` 表示等待接收首条短信
+   - `2` 表示已收到短信
+   - `3` 表示已触发“再次接收”，正在等待下一条短信
+10. HeroSMS 页面当前采用“webhook 写库 + 前端自动读取本地活动列表”的组合方式：
+   - 自动轮询只读取本地 `GET /api/hero-sms/activations`
+   - 手动点击“刷新活动列表”才调用 `POST /api/hero-sms/activations/refresh` 去同步 HeroSMS 官方状态
+   - 自动轮询只在存在等待中的号码时开启，也就是状态 `4` 或 `3`
+11. HeroSMS 活动记录当前只保留“当前短信”与“上一条已隐藏短信”两层，不支持完整短信历史；如需完整追踪，后续应新增独立短信历史表，不继续在主表硬塞字段。
 
 ## 数据字段约定
 

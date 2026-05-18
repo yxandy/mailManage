@@ -524,7 +524,11 @@ export function HeroSmsReadonlyClient({
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(requestBody),
+          body: JSON.stringify({
+            ...requestBody,
+            notifyOnSuccess: attempt > 1,
+            retryAttempt: attempt,
+          }),
         });
         const result = (await response.json()) as PurchaseResponse;
 

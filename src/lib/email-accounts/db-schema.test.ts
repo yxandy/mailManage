@@ -68,3 +68,24 @@ test("hero_sms_favorites 表包含收藏唯一约束字段", () => {
     /create table if not exists public\.hero_sms_favorites[\s\S]*constraint hero_sms_favorites_unique_selection unique \(service_code, country_id, operator_code\)/i,
   );
 });
+
+test("notification_events 表包含提醒队列核心字段与唯一去重键", () => {
+  const schemaSql = readFileSync(schemaFilePath, "utf8");
+
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.notification_events[\s\S]*\n\s*dedupe_key\s+text\s+not null unique,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.notification_events[\s\S]*\n\s*status\s+text\s+not null\s+default 'pending',?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.notification_events[\s\S]*\n\s*attempt_count\s+integer\s+not null\s+default 0,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create index if not exists idx_notification_events_pending\s+on public\.notification_events \(status, next_attempt_at, created_at\);/i,
+  );
+});

@@ -7,6 +7,7 @@ import {
   listActiveHeroSmsActivations,
   updateHeroSmsActivationByActivationId,
 } from "@/lib/hero-sms/repository";
+import { createHeroSmsReceivedNotification } from "@/lib/notifications/hero-sms";
 
 export const runtime = "nodejs";
 
@@ -20,14 +21,28 @@ export async function POST() {
   try {
     const currentItems = await listActiveHeroSmsActivations();
     const updates = await syncHeroSmsActivations(currentItems);
+    const currentItemMap = new Map(currentItems.map((item) => [item.activation_id, item]));
 
     for (const item of updates) {
+      const currentItem = currentItemMap.get(item.activationId);
       await updateHeroSmsActivationByActivationId(item.activationId, {
         activation_status: item.activationStatus,
         sms_code: item.smsCode,
         sms_text: item.smsText,
         is_active: item.isActive,
       });
+
+      if (
+        currentItem &&
+        (item.smsCode || item.smsText) &&
+        (item.smsCode !== currentItem.sms_code || item.smsText !== currentItem.sms_text)
+      ) {
+        await createHeroSmsReceivedNotification({
+          record: currentItem,
+          smsCode: item.smsCode,
+          smsText: item.smsText,
+        });
+      }
     }
 
     const refreshedItems = await listActiveHeroSmsActivations();

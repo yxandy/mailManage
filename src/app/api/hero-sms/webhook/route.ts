@@ -6,6 +6,7 @@ import {
   listActiveHeroSmsActivations,
   updateHeroSmsActivationByActivationId,
 } from "@/lib/hero-sms/repository";
+import { createHeroSmsReceivedNotification } from "@/lib/notifications/hero-sms";
 
 export const runtime = "nodejs";
 
@@ -112,6 +113,12 @@ export async function POST(request: Request) {
       sms_text: smsText || record.sms_text,
       sms_code: smsCode || record.sms_code,
       activation_status: smsText ? "2" : record.activation_status,
+    });
+
+    await createHeroSmsReceivedNotification({
+      record,
+      smsCode: smsCode || record.sms_code,
+      smsText: smsText || record.sms_text,
     });
 
     console.log("[hero-sms webhook] activation updated", {

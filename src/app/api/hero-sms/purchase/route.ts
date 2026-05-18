@@ -6,6 +6,7 @@ import {
   purchaseHeroSmsNumber,
 } from "@/lib/hero-sms/client";
 import { createHeroSmsActivation } from "@/lib/hero-sms/repository";
+import { createHeroSmsAutoRetryPurchaseNotification } from "@/lib/notifications/hero-sms";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,8 @@ export async function POST(request: Request) {
       countryName?: string;
       maxPrice?: string;
       operator?: string;
+      notifyOnSuccess?: boolean;
+      retryAttempt?: number;
     };
 
     const service = body.service?.trim() ?? "";
@@ -32,6 +35,8 @@ export async function POST(request: Request) {
     const countryName = body.countryName?.trim() ?? `国家 ${country}`;
     const maxPrice = body.maxPrice?.trim() ?? "";
     const operator = body.operator?.trim() ?? "";
+    const notifyOnSuccess = body.notifyOnSuccess === true;
+    const retryAttempt = Number(body.retryAttempt);
 
     if (!service) {
       return NextResponse.json({ error: "缺少 service 参数" }, { status: 400 });
@@ -60,6 +65,18 @@ export async function POST(request: Request) {
       countryName,
       operatorCode: operator,
     });
+
+    if (notifyOnSuccess && Number.isFinite(retryAttempt) && retryAttempt > 1) {
+      await createHeroSmsAutoRetryPurchaseNotification({
+        purchase: result,
+        serviceCode: service,
+        serviceName,
+        countryId: country,
+        countryName,
+        operatorCode: operator,
+        retryAttempt,
+      });
+    }
 
     return NextResponse.json({ result });
   } catch (error) {
