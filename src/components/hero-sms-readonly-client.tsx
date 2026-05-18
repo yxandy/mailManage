@@ -55,7 +55,7 @@ type PurchaseResponse = {
 
 const HERO_SMS_AUTO_RETRY_INTERVAL_SECONDS = 8;
 const HERO_SMS_AUTO_RETRY_MAX_ATTEMPTS = 75;
-const HERO_SMS_ACTIVATIONS_AUTO_REFRESH_INTERVAL_MS = 6000;
+const HERO_SMS_ACTIVATIONS_AUTO_REFRESH_INTERVAL_MS = 3000;
 
 const CURRENCY_LABELS: Record<number, string> = {
   840: "USD",
@@ -157,6 +157,7 @@ export function HeroSmsReadonlyClient({
   const [offerError, setOfferError] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isRefreshingActivations, setIsRefreshingActivations] = useState(false);
+  const [isPollingActivations, setIsPollingActivations] = useState(false);
   const [isLoadingOffer, setIsLoadingOffer] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [operators, setOperators] = useState<HeroSmsOperatorOption[]>([]);
@@ -318,7 +319,34 @@ export function HeroSmsReadonlyClient({
     }
   }
 
+  async function fetchActivationsList() {
+    const response = await fetch("/api/hero-sms/activations");
+    const result = (await response.json()) as ActivationsResponse & { error?: string };
+
+    if (!response.ok) {
+      throw new Error(result.error ?? "查询活动列表失败");
+    }
+
+    setActivations(result.items);
+  }
+
   async function refreshActivations() {
+    if (isRefreshingActivations || isPollingActivations) {
+      return;
+    }
+
+    setIsPollingActivations(true);
+
+    try {
+      await fetchActivationsList();
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : "查询活动列表失败");
+    } finally {
+      setIsPollingActivations(false);
+    }
+  }
+
+  async function syncActivations() {
     if (isRefreshingActivations) {
       return;
     }
@@ -499,7 +527,7 @@ export function HeroSmsReadonlyClient({
 
         if (response.ok) {
           setPurchaseLogs((current) => [...current, `第 ${attempt} 次尝试购买成功。`]);
-          await Promise.all([refreshActivations(), refreshBalanceOnly()]);
+          await Promise.all([fetchActivationsList(), refreshBalanceOnly()]);
           setAutoRetryCountdown(0);
           return;
         }
@@ -618,7 +646,7 @@ export function HeroSmsReadonlyClient({
         return;
       }
 
-      if (isRefreshingActivations || actioningActivationId || isRefreshing) {
+      if (isRefreshingActivations || isPollingActivations || actioningActivationId || isRefreshing) {
         return;
       }
 
@@ -628,7 +656,7 @@ export function HeroSmsReadonlyClient({
     return () => {
       window.clearInterval(timer);
     };
-  }, [actioningActivationId, isRefreshing, isRefreshingActivations]);
+  }, [actioningActivationId, isPollingActivations, isRefreshing, isRefreshingActivations]);
 
   function getActivationRemainingMs(item: HeroSmsActivationView): number | null {
     const activationStart = new Date(item.activationTime).getTime();
@@ -684,7 +712,7 @@ export function HeroSmsReadonlyClient({
         throw new Error(result.error ?? "操作失败");
       }
 
-      await Promise.all([refreshActivations(), refreshBalanceOnly()]);
+      await Promise.all([fetchActivationsList(), refreshBalanceOnly()]);
     } catch (error) {
       setPurchaseError(error instanceof Error ? error.message : "操作失败");
     } finally {
@@ -1132,7 +1160,7 @@ export function HeroSmsReadonlyClient({
               <button
                 type="button"
                 className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-70"
-                onClick={refreshActivations}
+                onClick={syncActivations}
                 disabled={isRefreshingActivations}
               >
                 {isRefreshingActivations ? "刷新中..." : "刷新活动列表"}
@@ -1163,7 +1191,17 @@ export function HeroSmsReadonlyClient({
                   {activations.map((item) => {
                     const remaining = getActivationRemainingMs(item);
                     const hasVisibleSms = Boolean(item.smsText);
-                    const primaryAction: ActivationAction = hasVisibleSms ? "finish" : "cancel";
+                    const hasEverReceivedSms = Boolean(
+                      item.smsText ||
+                        item.smsCode ||
+                        item.lastSmsText ||
+                        item.lastSmsCode ||
+                        item.activationStatus === "2" ||
+                        item.activationStatus === "3",
+                    );
+                    const primaryAction: ActivationAction = hasEverReceivedSms
+                      ? "finish"
+                      : "cancel";
                     const canRetrySms =
                       item.activationStatus === "2" &&
                       hasVisibleSms &&
@@ -1219,13 +1257,25 @@ export function HeroSmsReadonlyClient({
                               >
                                 {smsDisplayText}
                               </button>
+                              {isPollingActivations ? (
+                                <span className="mt-2 block text-xs text-[var(--muted)]">
+                                  正在检查最新短信...
+                                </span>
+                              ) : null}
                             </>
                           ) : (
-                            <span className="text-[var(--muted)]">
-                              {item.activationStatus === "3"
-                                ? "等待再次接收短信"
-                                : "等待接收短信"}
-                            </span>
+                            <>
+                              <span className="text-[var(--muted)]">
+                                {item.activationStatus === "3"
+                                  ? "等待再次接收短信"
+                                  : "等待接收短信"}
+                              </span>
+                              {isPollingActivations ? (
+                                <span className="mt-2 block text-xs text-[var(--muted)]">
+                                  正在检查最新短信...
+                                </span>
+                              ) : null}
+                            </>
                           )}
                         </td>
                         <td className="px-4 py-4">
