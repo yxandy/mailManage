@@ -113,12 +113,21 @@ export function mapHeroSmsOffer(
 
   const min = offer.prices.min;
   const defaultPrice = offer.prices.default;
-  const tierMinPrice = Object.keys(offer.map ?? {})
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .map((item) => Number(item))
-    .filter((item) => Number.isFinite(item))
-    .sort((a, b) => a - b)[0];
+  const tierPrices = Object.entries(offer.map ?? {})
+    .map(([price, count]) => ({
+      price: price.trim(),
+      numericPrice: Number(price),
+      count,
+    }))
+    .filter(
+      (item) =>
+        item.price &&
+        Number.isFinite(item.numericPrice) &&
+        typeof item.count === "number" &&
+        Number.isFinite(item.count),
+    )
+    .sort((a, b) => a.numericPrice - b.numericPrice);
+  const tierMinPrice = tierPrices[0]?.numericPrice;
 
   if (
     typeof min !== "number" ||
@@ -134,6 +143,10 @@ export function mapHeroSmsOffer(
     minPrice: String(min),
     defaultPrice: String(defaultPrice),
     tierMinPrice: String(tierMinPrice),
+    tierPrices: tierPrices.map((item) => ({
+      price: item.price,
+      count: item.count,
+    })),
     totalCount: offer.counts.total ?? 0,
     physicalCount: offer.counts.physical ?? 0,
     defaultPriceCount: offer.counts.defaultPrice ?? 0,

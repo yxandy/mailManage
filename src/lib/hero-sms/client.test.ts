@@ -79,6 +79,11 @@ test("HeroSMS offers 可解析最低个人价与库存", () => {
     minPrice: "0.15",
     defaultPrice: "0.15",
     tierMinPrice: "0.15",
+    tierPrices: [
+      { price: "0.1500", count: 14460 },
+      { price: "0.1553", count: 28887 },
+      { price: "0.6143", count: 670031 },
+    ],
     totalCount: 22598,
     physicalCount: 12352,
     defaultPriceCount: 4787,

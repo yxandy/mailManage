@@ -23,6 +23,10 @@ export type HeroSmsOfferView = {
   minPrice: string;
   defaultPrice: string;
   tierMinPrice: string;
+  tierPrices: Array<{
+    price: string;
+    count: number;
+  }>;
   totalCount: number;
   physicalCount: number;
   defaultPriceCount: number;
