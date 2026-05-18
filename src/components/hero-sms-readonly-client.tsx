@@ -175,6 +175,7 @@ export function HeroSmsReadonlyClient({
   const [isDeletingFavoriteId, setIsDeletingFavoriteId] = useState("");
   const stopRetryRef = useRef(false);
 
+  const formattedBalance = `$${Number(balance).toFixed(4)}`;
   const selectedServiceOption = services.find((service) => service.code === selectedService) ?? null;
   const selectedCountryOption =
     countries.find((country) => String(country.id) === selectedCountry) ?? null;
@@ -737,22 +738,11 @@ export function HeroSmsReadonlyClient({
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
-        <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
-          <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
-            <div className="space-y-3">
-              <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">
-                HeroSMS
-              </p>
-              <h1 className="text-3xl font-semibold">短信接码验证</h1>
-              <p className="text-sm leading-7 text-[var(--muted)]">
-                这一页集中完成选项选择、价格确认、购买动作和当前活动管理。
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center justify-self-end gap-3">
-              <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-4 text-center">
-                <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">账户余额</p>
-                <p className="mt-2 text-3xl font-semibold">{balance}</p>
-              </div>
+        <section className="rounded-[24px] border border-[var(--border)] bg-[var(--panel)] px-6 py-4 shadow-[var(--shadow)]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h1 className="text-xl font-semibold">短信接码</h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <p className="text-xl font-semibold">{formattedBalance}</p>
               <a
                 href="/dashboard"
                 className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm"
@@ -765,21 +755,11 @@ export function HeroSmsReadonlyClient({
 
         <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
           <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">收藏</p>
-                <p className="mt-2 text-sm text-[var(--muted)]">
-                  常用的服务、国家、运营商组合会显示在这里。
-                </p>
-              </div>
-              <button
-                type="button"
-                className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-70"
-                onClick={handleSaveFavorite}
-                disabled={isSavingFavorite}
-              >
-                {isSavingFavorite ? "收藏中..." : "收藏当前选择"}
-              </button>
+            <div>
+              <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">收藏</p>
+              <p className="mt-2 text-sm text-[var(--muted)]">
+                常用的服务、国家、运营商组合会显示在这里。
+              </p>
             </div>
 
             <div className="mt-4 flex flex-wrap gap-3">
@@ -819,15 +799,11 @@ export function HeroSmsReadonlyClient({
             </div>
           </div>
 
-          <div className="mt-6 flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">报价验证</p>
-              <h2 className="mt-2 text-2xl font-semibold">选择条件与当前最低个人价</h2>
-            </div>
+          <div className="mt-6 flex justify-end">
             {isLoadingOffer ? <p className="text-sm text-[var(--muted)]">读取中...</p> : null}
           </div>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-3">
+          <div className="mt-3 grid gap-4 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
             <div
               className="grid gap-2 text-sm"
               onBlur={(event) => {
@@ -851,7 +827,7 @@ export function HeroSmsReadonlyClient({
                       ? `${selectedServiceOption.name} (${selectedServiceOption.code})`
                       : "点击搜索服务"}
                   </span>
-                  <span className="text-xs text-[var(--muted)]">⌕</span>
+                  <span className="text-lg leading-none text-[var(--muted)]">⌕</span>
                 </button>
                 {isServicePickerOpen ? (
                   <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 rounded-[24px] border border-[var(--border)] bg-[var(--panel)] p-3 shadow-[var(--shadow)]">
@@ -918,7 +894,7 @@ export function HeroSmsReadonlyClient({
                       ? `${selectedCountryOption.name} (${selectedCountryOption.id})`
                       : "点击搜索国家"}
                   </span>
-                  <span className="text-xs text-[var(--muted)]">⌕</span>
+                  <span className="text-lg leading-none text-[var(--muted)]">⌕</span>
                 </button>
                 {isCountryPickerOpen ? (
                   <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 rounded-[24px] border border-[var(--border)] bg-[var(--panel)] p-3 shadow-[var(--shadow)]">
@@ -967,7 +943,7 @@ export function HeroSmsReadonlyClient({
               <select
                 value={selectedOperator}
                 onChange={(event) => setSelectedOperator(event.target.value)}
-                className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-base"
                 disabled={isLoadingOperators}
               >
                 <option value="">
@@ -980,6 +956,16 @@ export function HeroSmsReadonlyClient({
                 ))}
               </select>
             </label>
+            <div className="grid items-end">
+              <button
+                type="button"
+                className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={handleSaveFavorite}
+                disabled={isSavingFavorite}
+              >
+                {isSavingFavorite ? "收藏中..." : "收藏当前选择"}
+              </button>
+            </div>
           </div>
 
           {pageError ? (
@@ -1006,8 +992,8 @@ export function HeroSmsReadonlyClient({
             </div>
           ) : null}
 
-          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,2fr)_360px]">
-            <div className="grid gap-4 lg:grid-cols-[repeat(2,minmax(0,1fr))_minmax(280px,0.9fr)]">
+          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(220px,0.75fr)_minmax(280px,0.9fr)_360px]">
+            <div className="grid gap-4">
               {offer ? (
                 <>
                   <button
@@ -1034,57 +1020,55 @@ export function HeroSmsReadonlyClient({
                   </button>
                 </>
               ) : null}
+            </div>
 
-              <div className="flex flex-col justify-between gap-3 rounded-[24px] border border-[var(--border)] bg-white px-5 py-5">
+            <div className="flex flex-col justify-between gap-3 rounded-[24px] border border-[var(--border)] bg-white px-5 py-5">
+              <button
+                type="button"
+                className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={refreshAll}
+                disabled={isRefreshing}
+              >
+                {isRefreshing ? "刷新中..." : "手动刷新"}
+              </button>
+              <label className="grid gap-2 text-sm">
+                <span className="text-[var(--muted)]">购置价格</span>
+                <input
+                  value={purchasePrice}
+                  onChange={(event) => {
+                    setPurchasePrice(event.target.value);
+                    setPurchasePriceSource("manual");
+                  }}
+                  placeholder={offer ? `例如 ${offer.minPrice}` : "请输入你希望的最高购置价格"}
+                  className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                />
+              </label>
+              <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
                 <button
                   type="button"
-                  className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-70"
-                  onClick={refreshAll}
-                  disabled={isRefreshing}
+                  className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
+                  onClick={handlePurchase}
+                  disabled={isPurchasing}
                 >
-                  {isRefreshing ? "刷新中..." : "手动刷新"}
+                  {isPurchasing ? "购买中..." : "购买 1 条号码"}
                 </button>
-                <label className="grid gap-2 text-sm">
-                  <span className="text-[var(--muted)]">购置价格</span>
-                  <input
-                    value={purchasePrice}
-                    onChange={(event) => {
-                      setPurchasePrice(event.target.value);
-                      setPurchasePriceSource("manual");
-                    }}
-                    placeholder={
-                      offer ? `例如 ${offer.minPrice}` : "请输入你希望的最高购置价格"
-                    }
-                    className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-                  />
-                </label>
-                <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+                {isPurchasing ? (
                   <button
                     type="button"
-                    className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
-                    onClick={handlePurchase}
-                    disabled={isPurchasing}
+                    className="rounded-2xl border border-[var(--danger)] px-5 py-3 text-sm font-semibold text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-70"
+                    onClick={handleStopRetry}
+                    disabled={isStoppingRetry}
                   >
-                    {isPurchasing ? "购买中..." : "购买 1 条号码"}
+                    {isStoppingRetry ? "停止中..." : "停止重试"}
                   </button>
-                  {isPurchasing ? (
-                    <button
-                      type="button"
-                      className="rounded-2xl border border-[var(--danger)] px-5 py-3 text-sm font-semibold text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-70"
-                      onClick={handleStopRetry}
-                      disabled={isStoppingRetry}
-                    >
-                      {isStoppingRetry ? "停止中..." : "停止重试"}
-                    </button>
-                  ) : null}
-                </div>
-
-                {purchaseError ? (
-                  <p className="rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
-                    {purchaseError}
-                  </p>
                 ) : null}
               </div>
+
+              {purchaseError ? (
+                <p className="rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
+                  {purchaseError}
+                </p>
+              ) : null}
             </div>
 
             <aside className="rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
