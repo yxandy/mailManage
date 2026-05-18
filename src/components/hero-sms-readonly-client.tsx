@@ -156,7 +156,6 @@ export function HeroSmsReadonlyClient({
   const [pageError, setPageError] = useState("");
   const [offerError, setOfferError] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isRefreshingActivations, setIsRefreshingActivations] = useState(false);
   const [isPollingActivations, setIsPollingActivations] = useState(false);
   const [isLoadingOffer, setIsLoadingOffer] = useState(false);
   const [isPurchasing, setIsPurchasing] = useState(false);
@@ -334,7 +333,7 @@ export function HeroSmsReadonlyClient({
   }
 
   async function refreshActivations() {
-    if (isRefreshingActivations || isPollingActivations) {
+    if (isPollingActivations) {
       return;
     }
 
@@ -346,31 +345,6 @@ export function HeroSmsReadonlyClient({
       setPurchaseError(error instanceof Error ? error.message : "查询活动列表失败");
     } finally {
       setIsPollingActivations(false);
-    }
-  }
-
-  async function syncActivations() {
-    if (isRefreshingActivations) {
-      return;
-    }
-
-    setIsRefreshingActivations(true);
-
-    try {
-      const response = await fetch("/api/hero-sms/activations/refresh", {
-        method: "POST",
-      });
-      const result = (await response.json()) as ActivationsResponse & { error?: string };
-
-      if (!response.ok) {
-        throw new Error(result.error ?? "刷新活动列表失败");
-      }
-
-      setActivations(result.items);
-    } catch (error) {
-      setPurchaseError(error instanceof Error ? error.message : "刷新活动列表失败");
-    } finally {
-      setIsRefreshingActivations(false);
     }
   }
 
@@ -657,7 +631,7 @@ export function HeroSmsReadonlyClient({
         return;
       }
 
-      if (isRefreshingActivations || isPollingActivations || actioningActivationId || isRefreshing) {
+      if (isPollingActivations || actioningActivationId || isRefreshing) {
         return;
       }
 
@@ -671,7 +645,6 @@ export function HeroSmsReadonlyClient({
     actioningActivationId,
     isPollingActivations,
     isRefreshing,
-    isRefreshingActivations,
     shouldAutoPollActivations,
   ]);
 
@@ -765,7 +738,7 @@ export function HeroSmsReadonlyClient({
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-8">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
         <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
-          <div className="grid gap-5 lg:grid-cols-[1fr_auto_auto] lg:items-end">
+          <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
             <div className="space-y-3">
               <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">
                 HeroSMS
@@ -775,25 +748,17 @@ export function HeroSmsReadonlyClient({
                 这一页集中完成选项选择、价格确认、购买动作和当前活动管理。
               </p>
             </div>
-            <div className="justify-self-center rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-4 text-center">
-              <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">账户余额</p>
-              <p className="mt-2 text-3xl font-semibold">{balance}</p>
-            </div>
             <div className="flex flex-wrap items-center justify-self-end gap-3">
+              <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-4 text-center">
+                <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">账户余额</p>
+                <p className="mt-2 text-3xl font-semibold">{balance}</p>
+              </div>
               <a
                 href="/dashboard"
                 className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm"
               >
                 返回邮箱管理
               </a>
-              <button
-                type="button"
-                className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
-                onClick={refreshAll}
-                disabled={isRefreshing}
-              >
-                {isRefreshing ? "刷新中..." : "手动刷新"}
-              </button>
             </div>
           </div>
         </section>
@@ -1042,9 +1007,9 @@ export function HeroSmsReadonlyClient({
           ) : null}
 
           <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,2fr)_360px]">
-            <div>
+            <div className="grid gap-4 lg:grid-cols-[repeat(2,minmax(0,1fr))_minmax(280px,0.9fr)]">
               {offer ? (
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <>
                   <button
                     type="button"
                     className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
@@ -1059,17 +1024,6 @@ export function HeroSmsReadonlyClient({
                   <button
                     type="button"
                     className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
-                    onClick={() => applyOfferPrice("default", offer.defaultPrice)}
-                  >
-                    <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                      默认价
-                    </p>
-                    <p className="mt-3 text-2xl font-semibold">{offer.defaultPrice}</p>
-                    <p className="mt-2 text-sm text-[var(--muted)]">点击带入购买价格</p>
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5 text-left transition hover:translate-y-[-1px] hover:border-[var(--primary)]"
                     onClick={() => applyOfferPrice("tier-min", offer.tierMinPrice)}
                   >
                     <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
@@ -1078,20 +1032,19 @@ export function HeroSmsReadonlyClient({
                     <p className="mt-3 text-2xl font-semibold">{offer.tierMinPrice}</p>
                     <p className="mt-2 text-sm text-[var(--muted)]">点击带入购买价格</p>
                   </button>
-                  <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">
-                    <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                      可售总量
-                    </p>
-                    <p className="mt-3 text-2xl font-semibold">{offer.totalCount}</p>
-                    <p className="mt-2 text-sm text-[var(--muted)]">
-                      实体 {offer.physicalCount} / 默认价位 {offer.defaultPriceCount}
-                    </p>
-                  </div>
-                </div>
+                </>
               ) : null}
 
-              <div className="mt-6 flex flex-col gap-3 lg:flex-row lg:items-end">
-                <label className="grid flex-1 gap-2 text-sm">
+              <div className="flex flex-col justify-between gap-3 rounded-[24px] border border-[var(--border)] bg-white px-5 py-5">
+                <button
+                  type="button"
+                  className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-70"
+                  onClick={refreshAll}
+                  disabled={isRefreshing}
+                >
+                  {isRefreshing ? "刷新中..." : "手动刷新"}
+                </button>
+                <label className="grid gap-2 text-sm">
                   <span className="text-[var(--muted)]">购置价格</span>
                   <input
                     value={purchasePrice}
@@ -1105,7 +1058,7 @@ export function HeroSmsReadonlyClient({
                     className="rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
                   />
                 </label>
-                <div className="flex gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
                   <button
                     type="button"
                     className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
@@ -1125,13 +1078,13 @@ export function HeroSmsReadonlyClient({
                     </button>
                   ) : null}
                 </div>
-              </div>
 
-              {purchaseError ? (
-                <p className="mt-5 rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
-                  {purchaseError}
-                </p>
-              ) : null}
+                {purchaseError ? (
+                  <p className="rounded-2xl border border-[var(--danger)]/25 bg-[color:color-mix(in_srgb,var(--danger)_8%,white)] px-4 py-3 text-sm text-[var(--danger)]">
+                    {purchaseError}
+                  </p>
+                ) : null}
+              </div>
             </div>
 
             <aside className="rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
@@ -1144,7 +1097,7 @@ export function HeroSmsReadonlyClient({
                   </p>
                 ) : null}
               </div>
-              <div className="mt-3 h-[420px] overflow-y-auto pr-1 text-sm text-[var(--muted)]">
+              <div className="mt-3 max-h-[180px] overflow-y-auto pr-1 text-sm text-[var(--muted)]">
                 {purchaseLogs.length > 0 ? (
                   <div className="flex flex-col gap-3">
                     {purchaseLogs.map((log, index) => (
@@ -1174,14 +1127,6 @@ export function HeroSmsReadonlyClient({
                 />
                 只显示数字
               </label>
-              <button
-                type="button"
-                className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm disabled:cursor-not-allowed disabled:opacity-70"
-                onClick={syncActivations}
-                disabled={isRefreshingActivations}
-              >
-                {isRefreshingActivations ? "刷新中..." : "刷新活动列表"}
-              </button>
             </div>
           </div>
 
