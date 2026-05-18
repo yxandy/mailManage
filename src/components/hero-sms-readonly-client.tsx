@@ -828,11 +828,7 @@ export function HeroSmsReadonlyClient({
             </div>
           </div>
 
-          <div className="mt-6 flex justify-end">
-            {isLoadingOffer ? <p className="text-sm text-[var(--muted)]">读取中...</p> : null}
-          </div>
-
-          <div className="mt-3 grid gap-4 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
+          <div className="mt-6 grid gap-4 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
             <div
               className="grid gap-2 text-sm"
               onBlur={(event) => {
@@ -1132,7 +1128,7 @@ export function HeroSmsReadonlyClient({
 
             </div>
 
-            <aside className="rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
+            <aside className="flex min-h-0 flex-col rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium text-[var(--text)]">日志</p>
                 {isPurchasing && autoRetryAttempt > 0 ? (
@@ -1142,7 +1138,7 @@ export function HeroSmsReadonlyClient({
                   </p>
                 ) : null}
               </div>
-              <div className="mt-3 max-h-[180px] overflow-y-auto pr-1 text-sm text-[var(--muted)]">
+              <div className="mt-3 min-h-0 flex-1 overflow-y-auto pr-1 text-sm text-[var(--muted)]">
                 {errorLogs.length > 0 || purchaseLogs.length > 0 ? (
                   <div className="flex flex-col gap-3">
                     {errorLogs.map((log, index) => (
