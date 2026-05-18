@@ -106,6 +106,18 @@ function getCurrencyLabel(code: number): string {
   return CURRENCY_LABELS[code] ?? `货币代码 ${code}`;
 }
 
+function formatCompactCount(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) {
+    return "";
+  }
+
+  if (value >= 10000) {
+    return `${(value / 10000).toFixed(value >= 100000 ? 1 : 2)}万`;
+  }
+
+  return String(value);
+}
+
 function formatCountdown(ms: number): string {
   if (ms <= 0) {
     return "0秒";
@@ -173,6 +185,7 @@ export function HeroSmsReadonlyClient({
   const [autoRetryCountdown, setAutoRetryCountdown] = useState(0);
   const [isStoppingRetry, setIsStoppingRetry] = useState(false);
   const [isDeletingFavoriteId, setIsDeletingFavoriteId] = useState("");
+  const [showAllTierPrices, setShowAllTierPrices] = useState(false);
   const stopRetryRef = useRef(false);
 
   const formattedBalance = `$${Number(balance).toFixed(4)}`;
@@ -182,22 +195,16 @@ export function HeroSmsReadonlyClient({
   const serviceMatches = filterServices(services, serviceKeyword);
   const countryMatches = filterCountries(countries, countryKeyword);
   const errorLogs = [pageError, operatorError, offerError, purchaseError].filter(Boolean);
-  const priceOptions = offer
-    ? [
-        ...offer.tierPrices.map((item) => ({
-          id: `tier:${item.price}` as const,
-          label: item.price,
-          count: item.count,
-          isPersonalMin: false,
-        })),
-        {
-          id: "personal-min" as const,
-          label: offer.minPrice,
-          count: null,
-          isPersonalMin: true,
-        },
-      ]
+  const tierPriceOptions = offer
+    ? offer.tierPrices.map((item) => ({
+        id: `tier:${item.price}` as const,
+        label: item.price,
+        count: item.count,
+      }))
     : [];
+  const visibleTierPriceOptions = showAllTierPrices
+    ? tierPriceOptions
+    : tierPriceOptions.slice(0, 6);
   const shouldAutoPollActivations = activations.some(
     (item) => item.activationStatus === "3" || item.activationStatus === "4",
   );
@@ -591,6 +598,7 @@ export function HeroSmsReadonlyClient({
 
   useEffect(() => {
     void loadOffer(selectedService, selectedCountry);
+    setShowAllTierPrices(false);
   }, [selectedService, selectedCountry]);
 
   useEffect(() => {
@@ -1007,42 +1015,74 @@ export function HeroSmsReadonlyClient({
           <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(220px,0.75fr)_minmax(0,0.45fr)_minmax(480px,1.35fr)]">
             <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">
               {offer ? (
-                <div>
-                  <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
-                    阶梯价格
-                  </p>
-                  <div className="mt-4 flex flex-col gap-2">
-                    {priceOptions.map((item) => (
-                      <label
-                        key={item.id}
-                        className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-4 py-3 transition ${
-                          purchasePriceSelection === item.id
-                            ? "border-[var(--primary)] bg-white"
-                            : "border-transparent bg-transparent hover:bg-white/70"
-                        }`}
+                <div className="flex h-full min-h-[280px] flex-col">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">
+                      阶梯价格
+                    </p>
+                    <p className="text-xs text-[var(--muted)]">
+                      {tierPriceOptions.length} 档
+                    </p>
+                  </div>
+                  <div className="mt-4 max-h-[260px] overflow-y-auto pr-1">
+                    <div className="flex flex-col gap-1.5">
+                      {visibleTierPriceOptions.map((item) => (
+                        <label
+                          key={item.id}
+                          className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2 transition ${
+                            purchasePriceSelection === item.id
+                              ? "border-[var(--primary)] bg-white"
+                              : "border-transparent bg-transparent hover:bg-white/70"
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="hero-sms-purchase-price"
+                            checked={purchasePriceSelection === item.id}
+                            onChange={() => applyOfferPrice(item.id, item.label)}
+                          />
+                          <span className="font-semibold leading-none">{item.label}</span>
+                          <span className="ml-auto text-xs text-[var(--muted)]">
+                            库存 {formatCompactCount(item.count)}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    {tierPriceOptions.length > 6 ? (
+                      <button
+                        type="button"
+                        className="mt-2 w-full rounded-xl border border-[var(--border)] px-3 py-2 text-xs text-[var(--muted)] transition hover:bg-white"
+                        onClick={() => setShowAllTierPrices((current) => !current)}
                       >
-                        <input
-                          type="radio"
-                          name="hero-sms-purchase-price"
-                          checked={purchasePriceSelection === item.id}
-                          onChange={() => applyOfferPrice(item.id, item.label)}
-                        />
-                        <span className="min-w-0 flex-1">
-                          <span
-                            className={`block text-xl font-semibold ${
-                              item.isPersonalMin ? "text-[var(--primary)]" : "text-[var(--text)]"
-                            }`}
-                          >
-                            {item.label}
-                          </span>
-                          <span className="mt-1 block text-xs text-[var(--muted)]">
-                            {item.isPersonalMin
-                              ? "个人最低价"
-                              : `阶梯库存 ${item.count ?? 0}`}
-                          </span>
+                        {showAllTierPrices
+                          ? "收起价格"
+                          : `展开更多价格（${tierPriceOptions.length - 6}）`}
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="mt-auto border-t border-[var(--border)] pt-3">
+                    <label
+                      className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 transition ${
+                        purchasePriceSelection === "personal-min"
+                          ? "border-[var(--primary)] bg-white"
+                          : "border-transparent bg-transparent hover:bg-white/70"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="hero-sms-purchase-price"
+                        checked={purchasePriceSelection === "personal-min"}
+                        onChange={() => applyOfferPrice("personal-min", offer.minPrice)}
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-xl font-semibold text-[var(--primary)]">
+                          {offer.minPrice}
                         </span>
-                      </label>
-                    ))}
+                        <span className="mt-1 block text-xs text-[var(--muted)]">
+                          个人最低价
+                        </span>
+                      </span>
+                    </label>
                   </div>
                 </div>
               ) : null}
