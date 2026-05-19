@@ -1287,14 +1287,14 @@ export function HeroSmsReadonlyClient({
               <table className="min-w-full table-fixed border-separate border-spacing-0 text-sm">
                 <thead className="bg-[var(--panel-strong)] text-left text-[var(--muted)]">
                   <tr>
-                    <th className="w-[15%] px-4 py-3 font-medium">号码</th>
-                    <th className="w-[12%] px-4 py-3 font-medium">实际价格</th>
-                    <th className="w-[12%] px-4 py-3 font-medium">剩余时间</th>
-                    <th className="w-[14%] px-4 py-3 font-medium">当前状态</th>
-                    <th className="w-[10%] px-4 py-3 font-medium">运营商</th>
-                    <th className="w-[14%] px-4 py-3 font-medium">备注</th>
-                    <th className="w-[15%] px-4 py-3 font-medium">最新短信</th>
-                    <th className="w-[8%] px-4 py-3 font-medium">操作</th>
+                    <th className="w-[14%] px-4 py-3 font-medium">号码</th>
+                    <th className="w-[10%] px-4 py-3 font-medium">实际价格</th>
+                    <th className="w-[11%] px-4 py-3 font-medium">剩余时间</th>
+                    <th className="w-[12%] px-4 py-3 font-medium">当前状态</th>
+                    <th className="w-[9%] px-4 py-3 font-medium">运营商</th>
+                    <th className="w-[13%] px-4 py-3 font-medium">备注</th>
+                    <th className="w-[18%] px-4 py-3 font-medium">最新短信</th>
+                    <th className="w-[13%] px-4 py-3 font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1379,7 +1379,7 @@ export function HeroSmsReadonlyClient({
                           )}
                         </td>
                         <td className="border-t border-[var(--border)] px-4 py-2 align-middle">
-                          <div className="flex min-h-8 flex-wrap items-center gap-2">
+                          <div className="flex min-h-8 items-center gap-2 whitespace-nowrap">
                             {canRetrySms ? (
                               <button
                                 type="button"
