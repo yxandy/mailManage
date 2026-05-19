@@ -116,6 +116,23 @@ test("HeroSMS 购买后 2 分钟内不可取消", () => {
   );
 });
 
+test("HeroSMS 取消锁定优先按本地创建时间计算，避免平台时间偏移", () => {
+  const item = {
+    smsCode: null,
+    smsText: null,
+    lastSmsCode: null,
+    lastSmsText: null,
+    activationStatus: "4",
+    activationTime: "2026-05-16T15:00:00.000Z",
+    createdAt: "2026-05-16T12:00:00.000Z",
+  };
+
+  assert.equal(
+    canCancelHeroSmsActivation(item, new Date("2026-05-16T12:03:00.000Z").getTime()),
+    true,
+  );
+});
+
 test("HeroSMS 已返回短信内容的号码不可取消", () => {
   const item = {
     smsCode: "123456",

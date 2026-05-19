@@ -65,20 +65,17 @@ export function hasHeroSmsActivationReceivedSms(item: {
 
 export function getHeroSmsCancelLockRemainingMs(
   item: {
-    activationTime: string;
     createdAt: string;
   },
   now: number,
 ): number | null {
-  const activationStart = new Date(item.activationTime).getTime();
   const localCreatedAt = new Date(item.createdAt).getTime();
-  const startTime = Number.isNaN(activationStart) ? localCreatedAt : activationStart;
 
-  if (Number.isNaN(startTime)) {
+  if (Number.isNaN(localCreatedAt)) {
     return null;
   }
 
-  return Math.max(startTime + HERO_SMS_CANCEL_LOCK_MS - now, 0);
+  return Math.max(localCreatedAt + HERO_SMS_CANCEL_LOCK_MS - now, 0);
 }
 
 export function canCancelHeroSmsActivation(
@@ -88,7 +85,6 @@ export function canCancelHeroSmsActivation(
     lastSmsCode: string | null;
     lastSmsText: string | null;
     activationStatus: string;
-    activationTime: string;
     createdAt: string;
   },
   now: number,
