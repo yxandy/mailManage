@@ -1100,7 +1100,7 @@ export function HeroSmsReadonlyClient({
             </div>
           ) : null}
 
-          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(220px,0.75fr)_minmax(0,0.45fr)_minmax(480px,1.35fr)]">
+          <div className="mt-5 grid gap-5 xl:h-[360px] xl:grid-cols-[minmax(220px,0.75fr)_minmax(0,0.45fr)_minmax(480px,1.35fr)]">
             <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">
               {offer ? (
                 <div className="flex h-full min-h-[280px] flex-col">
@@ -1220,7 +1220,7 @@ export function HeroSmsReadonlyClient({
 
             </div>
 
-            <aside className="flex min-h-0 flex-col rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
+            <aside className="flex min-h-[280px] flex-col rounded-[24px] border border-[var(--border)] bg-white px-5 py-4 xl:min-h-0">
               <div className="flex items-center justify-between gap-3">
                 <p className="text-sm font-medium text-[var(--text)]">日志</p>
                 {isPurchasing && autoRetryAttempt > 0 ? (
