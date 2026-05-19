@@ -128,6 +128,49 @@ export type HeroSmsActiveActivationItem = {
   smsText?: string | null;
 };
 
+export type HeroSmsActivationHistoryRawItem = Record<string, unknown> & {
+  id?: string | number;
+  activationId?: string | number;
+  date?: string;
+  phone?: string;
+  phoneNumber?: string;
+  sms?: string | null;
+  smsText?: string | null;
+  cost?: number | string;
+  activationCost?: number | string;
+  status?: string | number;
+  activationStatus?: string | number;
+  currency?: number | string;
+  service?: string;
+  serviceCode?: string;
+  serviceName?: string;
+  country?: number | string;
+  countryCode?: number | string;
+  countryName?: string;
+  operator?: string;
+  activationOperator?: string;
+};
+
+export type HeroSmsActivationHistoryRecord = {
+  id: string;
+  activation_id: string;
+  activation_date: string | null;
+  phone_number: string;
+  activation_cost: string | null;
+  currency_code: number | null;
+  service_code: string | null;
+  service_name: string | null;
+  country_id: number | null;
+  country_name: string | null;
+  operator_code: string | null;
+  activation_status: string | null;
+  sms_text: string | null;
+  raw_payload: HeroSmsActivationHistoryRawItem;
+  synced_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
 export type HeroSmsFavoriteRecord = {
   id: string;
   service_code: string;

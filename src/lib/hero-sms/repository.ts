@@ -1,10 +1,12 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import type {
+  HeroSmsActivationHistoryRecord,
   HeroSmsActivationRecord,
   HeroSmsFavoriteRecord,
   HeroSmsPurchaseResultView,
 } from "./types";
+import type { HeroSmsActivationHistoryInput } from "./history";
 
 export async function listActiveHeroSmsActivations(): Promise<HeroSmsActivationRecord[]> {
   const supabase = createSupabaseServerClient();
@@ -155,4 +157,51 @@ export async function softDeleteHeroSmsFavorite(id: string): Promise<void> {
   if (error) {
     throw new Error(`删除 HeroSMS 收藏失败：${error.message}`);
   }
+}
+
+export async function upsertHeroSmsActivationHistory(
+  items: HeroSmsActivationHistoryInput[],
+): Promise<void> {
+  if (items.length === 0) {
+    return;
+  }
+
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase.from("hero_sms_activation_history").upsert(
+    items.map((item) => ({
+      activation_id: item.activationId,
+      activation_date: item.activationDate,
+      phone_number: item.phoneNumber,
+      activation_cost: item.activationCost,
+      currency_code: item.currencyCode,
+      service_code: item.serviceCode,
+      service_name: item.serviceName,
+      country_id: item.countryId,
+      country_name: item.countryName,
+      operator_code: item.operatorCode,
+      activation_status: item.activationStatus,
+      sms_text: item.smsText,
+      raw_payload: item.rawPayload,
+      synced_at: new Date().toISOString(),
+    })),
+    { onConflict: "activation_id" },
+  );
+
+  if (error) {
+    throw new Error(`写入 HeroSMS 历史记录失败：${error.message}`);
+  }
+}
+
+export async function listHeroSmsActivationHistory(): Promise<HeroSmsActivationHistoryRecord[]> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("hero_sms_activation_history")
+    .select("*")
+    .order("activation_date", { ascending: false, nullsFirst: false });
+
+  if (error) {
+    throw new Error(`查询 HeroSMS 历史记录失败：${error.message}`);
+  }
+
+  return (data ?? []) as HeroSmsActivationHistoryRecord[];
 }

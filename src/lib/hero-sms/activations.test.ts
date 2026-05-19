@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   canCancelHeroSmsActivation,
   extractDigitsFromSmsText,
+  getHeroSmsActivationSmsDisplay,
   getHeroSmsCancelLockRemainingMs,
   getHeroSmsCurrencyLabel,
   getHeroSmsStatusText,
@@ -87,6 +88,29 @@ test("HeroSMS 再次接收状态会映射为等待再次短信", () => {
 test("HeroSMS 短信内容可提取数字部分", () => {
   assert.equal(
     extractDigitsFromSmsText("Your verification code is 123456, valid for 10 minutes."),
+    "123456 10",
+  );
+});
+
+test("HeroSMS 活动列表短信展示优先使用官方验证码字段", () => {
+  assert.equal(
+    getHeroSmsActivationSmsDisplay({
+      smsCode: "418868",
+      smsText:
+        "JANGAN KASIH KE SIAPA PUN. OTP: 418868 gojek.com/safety @merchants-gws-app.gopayapi.com #418868",
+      showDigitsOnly: true,
+    }),
+    "418868",
+  );
+});
+
+test("HeroSMS 活动列表没有验证码字段时才从正文提取数字", () => {
+  assert.equal(
+    getHeroSmsActivationSmsDisplay({
+      smsCode: null,
+      smsText: "Your verification code is 123456, valid for 10 minutes.",
+      showDigitsOnly: true,
+    }),
     "123456 10",
   );
 });

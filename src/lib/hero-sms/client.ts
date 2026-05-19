@@ -3,6 +3,7 @@ import { getRequiredEnv } from "../env";
 import type {
   HeroSmsActivationRecord,
   HeroSmsActiveActivationItem,
+  HeroSmsActivationHistoryRawItem,
   HeroSmsBalanceView,
   HeroSmsCountryOption,
   HeroSmsOfferView,
@@ -83,6 +84,8 @@ type HeroSmsActiveActivationsResponse = {
   status?: string;
   data?: HeroSmsActiveActivationItem[];
 };
+
+type HeroSmsActivationHistoryResponse = HeroSmsActivationHistoryRawItem[];
 
 type HeroSmsCompatRawResponse = {
   status: number;
@@ -469,6 +472,29 @@ export async function getHeroSmsActiveActivations(): Promise<HeroSmsActiveActiva
   }
 
   return response.data;
+}
+
+export async function getHeroSmsActivationHistory(input: {
+  start: number;
+  end: number;
+  offset?: number;
+  size?: number;
+}): Promise<HeroSmsActivationHistoryRawItem[]> {
+  const response = await fetchCompatJson<HeroSmsActivationHistoryResponse>(
+    new URLSearchParams({
+      action: "getHistory",
+      start: String(input.start),
+      end: String(input.end),
+      offset: String(input.offset ?? 0),
+      size: String(input.size ?? 100),
+    }),
+  );
+
+  if (!Array.isArray(response)) {
+    throw new Error("HeroSMS 历史记录返回异常");
+  }
+
+  return response;
 }
 
 async function runHeroSmsActivationAction(

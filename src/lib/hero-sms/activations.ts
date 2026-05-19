@@ -46,6 +46,26 @@ export function extractDigitsFromSmsText(smsText: string): string {
   return groups.join(" ");
 }
 
+export function getHeroSmsActivationSmsDisplay(input: {
+  smsCode: string | null;
+  smsText: string | null;
+  showDigitsOnly: boolean;
+}): string {
+  const smsCode = input.smsCode?.trim() ?? "";
+
+  if (smsCode) {
+    return smsCode;
+  }
+
+  const smsText = input.smsText?.trim() ?? "";
+
+  if (!smsText) {
+    return "";
+  }
+
+  return input.showDigitsOnly ? extractDigitsFromSmsText(smsText) || smsText : smsText;
+}
+
 export function hasHeroSmsActivationReceivedSms(item: {
   smsCode: string | null;
   smsText: string | null;

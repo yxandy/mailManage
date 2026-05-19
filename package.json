@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --test --experimental-test-isolation=none --experimental-strip-types src/test/index.test.ts",
-    "hash:password": "node scripts/hash-password.mjs"
+    "hash:password": "node scripts/hash-password.mjs",
+    "sync:herosms-history": "node scripts/sync-herosms-history.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",

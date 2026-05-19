@@ -69,6 +69,43 @@ test("hero_sms_favorites 表包含收藏唯一约束字段", () => {
   );
 });
 
+test("hero_sms_activation_history 表包含成功历史分析字段与原始载荷", () => {
+  const schemaSql = readFileSync(schemaFilePath, "utf8");
+
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.hero_sms_activation_history[\s\S]*\n\s*activation_id\s+text\s+not null unique,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.hero_sms_activation_history[\s\S]*\n\s*phone_number\s+text\s+not null,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.hero_sms_activation_history[\s\S]*\n\s*activation_cost\s+numeric\(12,4\),?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.hero_sms_activation_history[\s\S]*\n\s*service_code\s+text,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.hero_sms_activation_history[\s\S]*\n\s*country_id\s+integer,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.hero_sms_activation_history[\s\S]*\n\s*operator_code\s+text,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.hero_sms_activation_history[\s\S]*\n\s*raw_payload\s+jsonb\s+not null\s+default '\{\}'::jsonb,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create index if not exists idx_hero_sms_activation_history_activation_date\s+on public\.hero_sms_activation_history \(activation_date desc\);/i,
+  );
+});
+
 test("notification_events 表包含提醒队列核心字段与唯一去重键", () => {
   const schemaSql = readFileSync(schemaFilePath, "utf8");
 

@@ -14,7 +14,7 @@ import type {
 } from "@/lib/hero-sms/types";
 import {
   canCancelHeroSmsActivation,
-  extractDigitsFromSmsText,
+  getHeroSmsActivationSmsDisplay,
   getHeroSmsCancelLockRemainingMs,
   hasHeroSmsActivationReceivedSms,
 } from "@/lib/hero-sms/activations";
@@ -1311,11 +1311,11 @@ export function HeroSmsReadonlyClient({
                       item.activationStatus === "2" &&
                       hasVisibleSms &&
                       item.canGetAnotherSms;
-                    const smsDisplayText = item.smsText
-                      ? showDigitsOnly
-                        ? extractDigitsFromSmsText(item.smsText) || item.smsText
-                        : item.smsText
-                      : "";
+                    const smsDisplayText = getHeroSmsActivationSmsDisplay({
+                      smsCode: item.smsCode,
+                      smsText: item.smsText,
+                      showDigitsOnly,
+                    });
 
                     return (
                       <tr key={item.id} className="h-14 border-t border-[var(--border)]">
@@ -1355,7 +1355,7 @@ export function HeroSmsReadonlyClient({
                           </span>
                         </td>
                         <td className="border-t border-[var(--border)] px-4 py-2 align-middle">
-                          {item.smsText ? (
+                          {smsDisplayText ? (
                             <>
                               <button
                                 type="button"
