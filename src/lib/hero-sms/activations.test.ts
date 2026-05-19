@@ -2,9 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  canCancelHeroSmsActivation,
   extractDigitsFromSmsText,
+  getHeroSmsCancelLockRemainingMs,
   getHeroSmsCurrencyLabel,
   getHeroSmsStatusText,
+  hasHeroSmsActivationReceivedSms,
   mapHeroSmsActivationRecordToView,
   mapHeroSmsFavoriteRecordToView,
 } from "./activations.ts";
@@ -85,6 +88,49 @@ test("HeroSMS 短信内容可提取数字部分", () => {
   assert.equal(
     extractDigitsFromSmsText("Your verification code is 123456, valid for 10 minutes."),
     "123456 10",
+  );
+});
+
+test("HeroSMS 购买后 2 分钟内不可取消", () => {
+  const item = {
+    smsCode: null,
+    smsText: null,
+    lastSmsCode: null,
+    lastSmsText: null,
+    activationStatus: "4",
+    activationTime: "2026-05-16T12:00:00.000Z",
+    createdAt: "2026-05-16T12:00:00.000Z",
+  };
+
+  assert.equal(
+    getHeroSmsCancelLockRemainingMs(item, new Date("2026-05-16T12:01:00.000Z").getTime()),
+    60_000,
+  );
+  assert.equal(
+    canCancelHeroSmsActivation(item, new Date("2026-05-16T12:01:59.000Z").getTime()),
+    false,
+  );
+  assert.equal(
+    canCancelHeroSmsActivation(item, new Date("2026-05-16T12:02:00.000Z").getTime()),
+    true,
+  );
+});
+
+test("HeroSMS 已返回短信内容的号码不可取消", () => {
+  const item = {
+    smsCode: "123456",
+    smsText: null,
+    lastSmsCode: null,
+    lastSmsText: null,
+    activationStatus: "2",
+    activationTime: "2026-05-16T12:00:00.000Z",
+    createdAt: "2026-05-16T12:00:00.000Z",
+  };
+
+  assert.equal(hasHeroSmsActivationReceivedSms(item), true);
+  assert.equal(
+    canCancelHeroSmsActivation(item, new Date("2026-05-16T12:03:00.000Z").getTime()),
+    false,
   );
 });
 

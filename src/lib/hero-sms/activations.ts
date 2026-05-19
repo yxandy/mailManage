@@ -18,6 +18,8 @@ const HERO_SMS_STATUS_LABELS: Record<string, string> = {
   "8": "已取消",
 };
 
+export const HERO_SMS_CANCEL_LOCK_MS = 2 * 60 * 1000;
+
 export function getHeroSmsCurrencyLabel(code: number): string {
   return HERO_SMS_CURRENCY_LABELS[code] ?? `货币代码 ${code}`;
 }
@@ -42,6 +44,59 @@ export function extractDigitsFromSmsText(smsText: string): string {
   }
 
   return groups.join(" ");
+}
+
+export function hasHeroSmsActivationReceivedSms(item: {
+  smsCode: string | null;
+  smsText: string | null;
+  lastSmsCode: string | null;
+  lastSmsText: string | null;
+  activationStatus: string;
+}): boolean {
+  return Boolean(
+    item.smsText ||
+      item.smsCode ||
+      item.lastSmsText ||
+      item.lastSmsCode ||
+      item.activationStatus === "2" ||
+      item.activationStatus === "3",
+  );
+}
+
+export function getHeroSmsCancelLockRemainingMs(
+  item: {
+    activationTime: string;
+    createdAt: string;
+  },
+  now: number,
+): number | null {
+  const activationStart = new Date(item.activationTime).getTime();
+  const localCreatedAt = new Date(item.createdAt).getTime();
+  const startTime = Number.isNaN(activationStart) ? localCreatedAt : activationStart;
+
+  if (Number.isNaN(startTime)) {
+    return null;
+  }
+
+  return Math.max(startTime + HERO_SMS_CANCEL_LOCK_MS - now, 0);
+}
+
+export function canCancelHeroSmsActivation(
+  item: {
+    smsCode: string | null;
+    smsText: string | null;
+    lastSmsCode: string | null;
+    lastSmsText: string | null;
+    activationStatus: string;
+    activationTime: string;
+    createdAt: string;
+  },
+  now: number,
+): boolean {
+  return (
+    !hasHeroSmsActivationReceivedSms(item) &&
+    getHeroSmsCancelLockRemainingMs(item, now) === 0
+  );
 }
 
 export function mapHeroSmsActivationRecordToView(

@@ -99,6 +99,18 @@ export class HeroSmsPurchaseError extends Error {
   }
 }
 
+export class HeroSmsActivationActionError extends Error {
+  readonly code: string;
+  readonly details: string;
+
+  constructor(input: { code: string; details?: string; message: string }) {
+    super(input.message);
+    this.name = "HeroSmsActivationActionError";
+    this.code = input.code;
+    this.details = input.details ?? "";
+  }
+}
+
 const HERO_SMS_PURCHASE_ERROR_MESSAGES: Record<HeroSmsPurchaseErrorCode, string> = {
   NO_NUMBERS: "当前号码池暂时没有可售号码，系统可以稍后重试。",
   WRONG_MAX_PRICE: "当前出价低于平台可接受价格，请提高价格后再试。",
@@ -115,6 +127,15 @@ const HERO_SMS_PURCHASE_ERROR_MESSAGES: Record<HeroSmsPurchaseErrorCode, string>
   SERVER_ERROR: "HeroSMS 服务暂时异常，请稍后再试。",
   BAD_ACTION: "HeroSMS 接口动作无效。",
   UNKNOWN: "HeroSMS 返回了未识别的购买错误。",
+};
+
+const HERO_SMS_ACTIVATION_ACTION_ERROR_MESSAGES: Record<string, string> = {
+  EARLY_CANCEL_DENIED: "购买后 2 分钟内不可取消，请稍后再试。",
+  OTP_RECEIVED: "号码已返回短信内容，不允许取消。",
+  NEW_OTP_RECEIVED: "号码已返回新的短信内容，不允许取消。",
+  FREE_CANCELLATION_EXPIRED: "免费取消时间已过，平台不允许取消。",
+  ACTIVATION_NOT_ACTIVE: "该号码已不在活动状态，无法继续操作。",
+  NOT_FOUND: "未找到对应的 HeroSMS 激活记录。",
 };
 
 function normalizePurchaseErrorCode(value: string): HeroSmsPurchaseErrorCode {
@@ -189,6 +210,17 @@ function buildCompatHttpError(status: number, text: string): Error {
   }
 
   return new Error(`HeroSMS 请求失败：${status}${text ? `（${text}）` : ""}`);
+}
+
+function buildActivationActionError(json: HeroSmsStructuredErrorResponse): HeroSmsActivationActionError {
+  const code = json.title ?? "UNKNOWN";
+  const fallback = json.details?.trim() || "HeroSMS 拒绝了本次操作。";
+
+  return new HeroSmsActivationActionError({
+    code,
+    details: json.details ?? "",
+    message: HERO_SMS_ACTIVATION_ACTION_ERROR_MESSAGES[code] ?? fallback,
+  });
 }
 
 async function fetchCompatRaw(params: URLSearchParams): Promise<HeroSmsCompatRawResponse> {
@@ -451,7 +483,7 @@ async function runHeroSmsActivationAction(
   );
 
   if (json?.title) {
-    throw new Error(`${json.title}${json.details ? `：${json.details}` : ""}`);
+    throw buildActivationActionError(json);
   }
 
   if (text && text !== "OK") {
@@ -472,7 +504,7 @@ async function setHeroSmsActivationStatus(
   );
 
   if (json?.title) {
-    throw new Error(`${json.title}${json.details ? `：${json.details}` : ""}`);
+    throw buildActivationActionError(json);
   }
 
   const expected =

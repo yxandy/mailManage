@@ -12,7 +12,12 @@ import type {
   HeroSmsPurchaseErrorView,
   HeroSmsServiceOption,
 } from "@/lib/hero-sms/types";
-import { extractDigitsFromSmsText } from "@/lib/hero-sms/activations";
+import {
+  canCancelHeroSmsActivation,
+  extractDigitsFromSmsText,
+  getHeroSmsCancelLockRemainingMs,
+  hasHeroSmsActivationReceivedSms,
+} from "@/lib/hero-sms/activations";
 
 type HeroSmsReadonlyClientProps = {
   initialBalance: HeroSmsBalanceView;
@@ -56,7 +61,6 @@ type PurchaseResponse = {
 const HERO_SMS_AUTO_RETRY_INTERVAL_SECONDS = 8;
 const HERO_SMS_AUTO_RETRY_MAX_ATTEMPTS = 75;
 const HERO_SMS_ACTIVATIONS_AUTO_REFRESH_INTERVAL_MS = 3000;
-
 const CURRENCY_LABELS: Record<number, string> = {
   840: "USD",
 };
@@ -177,6 +181,7 @@ export function HeroSmsReadonlyClient({
   const [isLoadingOperators, setIsLoadingOperators] = useState(false);
   const [isSavingFavorite, setIsSavingFavorite] = useState(false);
   const [actioningActivationId, setActioningActivationId] = useState("");
+  const [isBatchCancelling, setIsBatchCancelling] = useState(false);
   const [copiedField, setCopiedField] = useState("");
   const [countdownNow, setCountdownNow] = useState(Date.now());
   const [showDigitsOnly, setShowDigitsOnly] = useState(true);
@@ -208,6 +213,7 @@ export function HeroSmsReadonlyClient({
   const shouldAutoPollActivations = activations.some(
     (item) => item.activationStatus === "3" || item.activationStatus === "4",
   );
+  const cancellableActivationsCount = activations.filter(canCancelActivation).length;
 
   async function loadOperators(country: string, preferredOperator = "") {
     if (!country) {
@@ -661,7 +667,7 @@ export function HeroSmsReadonlyClient({
         return;
       }
 
-      if (isPollingActivations || actioningActivationId || isRefreshing) {
+      if (isPollingActivations || actioningActivationId || isRefreshing || isBatchCancelling) {
         return;
       }
 
@@ -673,6 +679,7 @@ export function HeroSmsReadonlyClient({
     };
   }, [
     actioningActivationId,
+    isBatchCancelling,
     isPollingActivations,
     isRefreshing,
     shouldAutoPollActivations,
@@ -696,6 +703,28 @@ export function HeroSmsReadonlyClient({
     const localDeadline = localCreatedAt + durationMs;
 
     return Math.max(localDeadline - countdownNow, 0);
+  }
+
+  function getActivationRemark(item: HeroSmsActivationView): string {
+    if (hasHeroSmsActivationReceivedSms(item)) {
+      return "已返回短信内容不可取消";
+    }
+
+    const cancelLockRemainingMs = getHeroSmsCancelLockRemainingMs(item, countdownNow);
+
+    if (cancelLockRemainingMs === null) {
+      return "取消时间待确认";
+    }
+
+    if (cancelLockRemainingMs > 0) {
+      return `2 分钟之内不可取消，剩余 ${formatCountdown(cancelLockRemainingMs)}`;
+    }
+
+    return "可取消";
+  }
+
+  function canCancelActivation(item: HeroSmsActivationView): boolean {
+    return canCancelHeroSmsActivation(item, countdownNow);
   }
 
   async function handleActivationAction(item: HeroSmsActivationView, action: ActivationAction) {
@@ -737,6 +766,69 @@ export function HeroSmsReadonlyClient({
       setPurchaseError(error instanceof Error ? error.message : "操作失败");
     } finally {
       setActioningActivationId("");
+    }
+  }
+
+  async function handleBatchCancelActivations() {
+    if (isBatchCancelling || actioningActivationId) {
+      return;
+    }
+
+    const cancellableItems = activations.filter(canCancelActivation);
+
+    if (cancellableItems.length === 0) {
+      setPurchaseError("当前没有符合条件的可取消号码。");
+      return;
+    }
+
+    const confirmed = window.confirm(`确认批量取消 ${cancellableItems.length} 条可取消号码吗？`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsBatchCancelling(true);
+    setPurchaseError("");
+    setPurchaseLogs((current) => [
+      ...current,
+      `开始批量取消 ${cancellableItems.length} 条可取消号码。`,
+    ]);
+
+    let successCount = 0;
+    let failedCount = 0;
+
+    try {
+      for (const item of cancellableItems) {
+        const response = await fetch(`/api/hero-sms/activations/${item.id}/action`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ action: "cancel" }),
+        });
+        const result = (await response.json()) as { error?: string };
+
+        if (response.ok) {
+          successCount += 1;
+          continue;
+        }
+
+        failedCount += 1;
+        setPurchaseLogs((current) => [
+          ...current,
+          `${item.phoneNumber} 取消失败：${result.error ?? "操作失败"}`,
+        ]);
+      }
+
+      setPurchaseLogs((current) => [
+        ...current,
+        `批量取消完成：成功 ${successCount} 条，失败 ${failedCount} 条。`,
+      ]);
+      await Promise.all([fetchActivationsList(), refreshBalanceOnly()]);
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : "批量取消失败");
+    } finally {
+      setIsBatchCancelling(false);
     }
   }
 
@@ -1165,6 +1257,16 @@ export function HeroSmsReadonlyClient({
               <h2 className="mt-2 text-2xl font-semibold">当前活动中的号码</h2>
             </div>
             <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                className="rounded-2xl border border-[var(--border)] px-4 py-2 text-sm font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => void handleBatchCancelActivations()}
+                disabled={isBatchCancelling || cancellableActivationsCount === 0}
+              >
+                {isBatchCancelling
+                  ? "批量取消中..."
+                  : `批量取消可取消号码（${cancellableActivationsCount}）`}
+              </button>
               <label className="flex items-center gap-2 text-sm text-[var(--muted)]">
                 <input
                   type="checkbox"
@@ -1190,23 +1292,18 @@ export function HeroSmsReadonlyClient({
                     <th className="w-[12%] px-4 py-3 font-medium">剩余时间</th>
                     <th className="w-[14%] px-4 py-3 font-medium">当前状态</th>
                     <th className="w-[10%] px-4 py-3 font-medium">运营商</th>
-                    <th className="w-[12%] px-4 py-3 font-medium">可重复接收短信</th>
+                    <th className="w-[14%] px-4 py-3 font-medium">备注</th>
                     <th className="w-[15%] px-4 py-3 font-medium">最新短信</th>
-                    <th className="w-[10%] px-4 py-3 font-medium">操作</th>
+                    <th className="w-[8%] px-4 py-3 font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
                   {activations.map((item) => {
                     const remaining = getActivationRemainingMs(item);
                     const hasVisibleSms = Boolean(item.smsText);
-                    const hasEverReceivedSms = Boolean(
-                      item.smsText ||
-                        item.smsCode ||
-                        item.lastSmsText ||
-                        item.lastSmsCode ||
-                        item.activationStatus === "2" ||
-                        item.activationStatus === "3",
-                    );
+                    const hasEverReceivedSms = hasHeroSmsActivationReceivedSms(item);
+                    const canCancel = canCancelActivation(item);
+                    const remark = getActivationRemark(item);
                     const primaryAction: ActivationAction = hasEverReceivedSms
                       ? "finish"
                       : "cancel";
@@ -1246,8 +1343,16 @@ export function HeroSmsReadonlyClient({
                         <td className="border-t border-[var(--border)] px-4 py-2 align-middle font-medium">
                           {item.operatorCode || "任意运营商"}
                         </td>
-                        <td className="border-t border-[var(--border)] px-4 py-2 align-middle font-medium">
-                          {item.canGetAnotherSms ? "是" : "否"}
+                        <td className="border-t border-[var(--border)] px-4 py-2 align-middle">
+                          <span
+                            className={
+                              canCancel
+                                ? "font-medium text-[var(--primary)]"
+                                : "text-[var(--muted)]"
+                            }
+                          >
+                            {remark}
+                          </span>
                         </td>
                         <td className="border-t border-[var(--border)] px-4 py-2 align-middle">
                           {item.smsText ? (
@@ -1280,7 +1385,7 @@ export function HeroSmsReadonlyClient({
                                 type="button"
                                 className="h-8 rounded-xl border border-[var(--border)] px-3 text-xs font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
                                 onClick={() => void handleActivationAction(item, "retry-sms")}
-                                disabled={actioningActivationId === item.id}
+                                disabled={actioningActivationId === item.id || isBatchCancelling}
                               >
                                 {actioningActivationId === item.id ? "处理中..." : "再次接收"}
                               </button>
@@ -1289,7 +1394,12 @@ export function HeroSmsReadonlyClient({
                               type="button"
                               className="h-8 rounded-xl border border-[var(--border)] px-3 text-xs font-medium transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
                               onClick={() => void handleActivationAction(item, primaryAction)}
-                              disabled={actioningActivationId === item.id}
+                              disabled={
+                                actioningActivationId === item.id ||
+                                isBatchCancelling ||
+                                (primaryAction === "cancel" && !canCancel)
+                              }
+                              title={primaryAction === "cancel" && !canCancel ? remark : undefined}
                             >
                               {actioningActivationId === item.id
                                 ? "处理中..."
