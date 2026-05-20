@@ -204,6 +204,7 @@ export function HeroSmsReadonlyClient({
   const [isServicePickerOpen, setIsServicePickerOpen] = useState(false);
   const [isCountryPickerOpen, setIsCountryPickerOpen] = useState(false);
   const [purchasePrice, setPurchasePrice] = useState("");
+  const [monitorPrice, setMonitorPrice] = useState("");
   const [purchasePriceSelection, setPurchasePriceSelection] =
     useState<PurchasePriceSelection>("personal-min");
   const [purchaseError, setPurchaseError] = useState("");
@@ -254,14 +255,14 @@ export function HeroSmsReadonlyClient({
   const selectedOperatorName =
     selectedOfferOperator?.name ??
     (selectedOperator ? selectedOperator : "任意运营商");
-  const normalizedPurchasePrice = Number(purchasePrice);
+  const normalizedMonitorPrice = Number(monitorPrice);
   const selectedPriceMonitorExists = priceMonitors.some(
     (monitor) =>
       monitor.serviceCode === selectedService &&
       String(monitor.countryId) === selectedCountry &&
       monitor.operatorCode === selectedOperatorCode &&
       monitor.targetPrice ===
-        (Number.isFinite(normalizedPurchasePrice) ? normalizedPurchasePrice.toFixed(4) : ""),
+        (Number.isFinite(normalizedMonitorPrice) ? normalizedMonitorPrice.toFixed(4) : ""),
   );
   const operatorTierPrices = useMemo(
     () => selectedOfferOperator?.tierPrices ?? offer?.tierPrices ?? [],
@@ -534,8 +535,8 @@ export function HeroSmsReadonlyClient({
       return;
     }
 
-    if (!purchasePrice.trim()) {
-      setPurchaseError("请先选择或输入要监控的价格。");
+    if (!monitorPrice.trim()) {
+      setPurchaseError("请输入要监控的价位。");
       return;
     }
 
@@ -555,7 +556,7 @@ export function HeroSmsReadonlyClient({
           countryName: selectedCountryOption.name,
           operatorCode: selectedOperatorCode,
           operatorName: selectedOperatorName,
-          targetPrice: purchasePrice,
+          targetPrice: monitorPrice,
         }),
       });
       const result = (await response.json()) as PriceMonitorsResponse & { error?: string };
@@ -565,9 +566,10 @@ export function HeroSmsReadonlyClient({
       }
 
       setPriceMonitors(result.items);
+      setMonitorPrice("");
       setPurchaseLogs((current) => [
         ...current,
-        `已创建价格监控：${selectedServiceOption.name} / ${selectedCountryOption.name} / ${selectedOperatorName} / ${Number(purchasePrice).toFixed(4)}。`,
+        `已创建价格监控：${selectedServiceOption.name} / ${selectedCountryOption.name} / ${selectedOperatorName} / ${Number(monitorPrice).toFixed(4)}。`,
       ]);
     } catch (error) {
       setPurchaseError(error instanceof Error ? error.message : "创建价格监控失败");
@@ -1071,7 +1073,7 @@ export function HeroSmsReadonlyClient({
 
           {priceMonitors.length === 0 ? (
             <div className="mt-5 rounded-[24px] border border-dashed border-[var(--border)] bg-white px-5 py-8 text-sm text-[var(--muted)]">
-              当前还没有价格监控。选择服务、国家、运营商和价格后，可以添加一个有货提醒。
+              当前还没有价格监控。选择服务、国家、运营商并输入目标价位后，可以添加一个有货提醒。
             </div>
           ) : (
             <div className="mt-5 overflow-x-auto rounded-[24px] border border-[var(--border)] bg-white">
@@ -1201,7 +1203,7 @@ export function HeroSmsReadonlyClient({
             </div>
           </div>
 
-          <div className="mt-6 grid gap-4 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto]">
+          <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.15fr)_minmax(0,1fr)_minmax(160px,0.55fr)_auto_auto]">
             <div
               className="grid gap-2 text-sm"
               onBlur={(event) => {
@@ -1361,6 +1363,31 @@ export function HeroSmsReadonlyClient({
               </div>
             </label>
             <div className="grid items-end">
+              <label className="grid gap-2 text-sm">
+                <span className="text-[var(--muted)]">监控价位</span>
+                <input
+                  value={monitorPrice}
+                  onChange={(event) => setMonitorPrice(event.target.value)}
+                  placeholder="监控价位"
+                  className="w-full min-w-0 rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                />
+              </label>
+            </div>
+            <div className="grid items-end">
+              <button
+                type="button"
+                className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold whitespace-nowrap text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={handleCreatePriceMonitor}
+                disabled={isSavingPriceMonitor || selectedPriceMonitorExists}
+              >
+                {isSavingPriceMonitor
+                  ? "添加中..."
+                  : selectedPriceMonitorExists
+                    ? "已监控"
+                    : "监控此价位"}
+              </button>
+            </div>
+            <div className="grid items-end">
               <button
                 type="button"
                 className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-70"
@@ -1477,18 +1504,6 @@ export function HeroSmsReadonlyClient({
                   className="w-full min-w-0 rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
                 />
               </label>
-              <button
-                type="button"
-                className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm font-semibold transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
-                onClick={handleCreatePriceMonitor}
-                disabled={isSavingPriceMonitor || selectedPriceMonitorExists}
-              >
-                {isSavingPriceMonitor
-                  ? "添加监控中..."
-                  : selectedPriceMonitorExists
-                    ? "已监控此价位"
-                    : "监控此价位"}
-              </button>
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
                 <button
                   type="button"
