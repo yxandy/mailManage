@@ -21,6 +21,18 @@ export type HeroSmsOperatorOption = {
   name: string;
 };
 
+export type HeroSmsOfferOperatorView = {
+  code: string;
+  name: string;
+  totalCount: number;
+  physicalCount: number;
+  personalMinCount: number;
+  tierPrices: Array<{
+    price: string;
+    count: number;
+  }>;
+};
+
 export type HeroSmsOfferView = {
   service: string;
   country: number;
@@ -34,6 +46,7 @@ export type HeroSmsOfferView = {
   totalCount: number;
   physicalCount: number;
   defaultPriceCount: number;
+  operators: HeroSmsOfferOperatorView[];
 };
 
 export type HeroSmsPurchaseResultView = {

@@ -6,6 +6,7 @@ import {
   mapHeroSmsOffer,
   mapHeroSmsOperators,
   mapHeroSmsServices,
+  mapHeroSmsWebOffer,
   parseHeroSmsBalance,
 } from "./transformers.ts";
 
@@ -87,6 +88,7 @@ test("HeroSMS offers 可解析最低个人价与库存", () => {
     totalCount: 22598,
     physicalCount: 12352,
     defaultPriceCount: 4787,
+    operators: [],
   });
 });
 
@@ -94,6 +96,85 @@ test("HeroSMS offers 不存在组合时返回空", () => {
   const result = mapHeroSmsOffer({ data: {} }, "tg", 6);
 
   assert.equal(result, null);
+});
+
+test("HeroSMS 网页端 offers 可按运营商解析价格档位", () => {
+  const result = mapHeroSmsWebOffer(
+    {
+      data: {
+        dr: {
+          userPrice: 0.05,
+          activationFinishTime: 20,
+          operators: [
+            {
+              name: "any",
+              localName: "任何操作员",
+              activationsCount: 494,
+              countPhysical: 494,
+              freePriceOffers: {
+                "0.0500": 9,
+                "0.5711": 365,
+                "0.5883": 494,
+              },
+            },
+            {
+              name: "vinaphone",
+              localName: "維納電話",
+              activationsCount: 484,
+              countPhysical: 484,
+              freePriceOffers: {
+                "0.5711": 356,
+                "0.5883": 484,
+              },
+            },
+          ],
+        },
+      },
+    },
+    "dr",
+    10,
+  );
+
+  assert.deepEqual(result, {
+    service: "dr",
+    country: 10,
+    minPrice: "0.05",
+    defaultPrice: "0.05",
+    tierMinPrice: "0.0500",
+    tierPrices: [
+      { price: "0.0500", count: 9 },
+      { price: "0.5711", count: 365 },
+      { price: "0.5883", count: 494 },
+    ],
+    totalCount: 494,
+    physicalCount: 494,
+    defaultPriceCount: 9,
+    operators: [
+      {
+        code: "any",
+        name: "任何操作员",
+        totalCount: 494,
+        physicalCount: 494,
+        personalMinCount: 9,
+        tierPrices: [
+          { price: "0.0500", count: 9 },
+          { price: "0.5711", count: 365 },
+          { price: "0.5883", count: 494 },
+        ],
+      },
+      {
+        code: "vinaphone",
+        name: "維納電話",
+        totalCount: 484,
+        physicalCount: 484,
+        personalMinCount: 0,
+        tierPrices: [
+          { price: "0.5711", count: 356 },
+          { price: "0.5883", count: 484 },
+        ],
+      },
+    ],
+  });
 });
 
 test("HeroSMS 运营商列表会按国家转换为前端选项", () => {

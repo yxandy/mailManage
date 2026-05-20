@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   HeroSmsActivationView,
@@ -38,10 +38,6 @@ type BalanceResponse = HeroSmsBalanceView;
 
 type OfferResponse = {
   offer: HeroSmsOfferView | null;
-};
-
-type OperatorsResponse = {
-  operators: HeroSmsOperatorOption[];
 };
 
 type ActivationsResponse = {
@@ -181,7 +177,6 @@ export function HeroSmsReadonlyClient({
   const [operators, setOperators] = useState<HeroSmsOperatorOption[]>([]);
   const [selectedOperator, setSelectedOperator] = useState(initialFavorite?.operatorCode ?? "");
   const [operatorError, setOperatorError] = useState("");
-  const [isLoadingOperators, setIsLoadingOperators] = useState(false);
   const [isSavingFavorite, setIsSavingFavorite] = useState(false);
   const [actioningActivationId, setActioningActivationId] = useState("");
   const [isBatchCancelling, setIsBatchCancelling] = useState(false);
@@ -207,8 +202,17 @@ export function HeroSmsReadonlyClient({
   const serviceMatches = filterServices(services, serviceKeyword);
   const countryMatches = filterCountries(countries, countryKeyword);
   const errorLogs = [pageError, operatorError, offerError, purchaseError].filter(Boolean);
+  const selectedOfferOperator =
+    offer?.operators.find((item) => item.code === (selectedOperator || "any")) ??
+    (selectedOperator ? null : offer?.operators[0] ?? null);
+  const operatorTierPrices = useMemo(
+    () => selectedOfferOperator?.tierPrices ?? offer?.tierPrices ?? [],
+    [offer?.tierPrices, selectedOfferOperator?.tierPrices],
+  );
+  const hasSelectedOperatorPersonalMin =
+    !offer || !selectedOfferOperator || selectedOfferOperator.personalMinCount > 0;
   const tierPriceOptions = offer
-    ? offer.tierPrices.map((item) => ({
+    ? operatorTierPrices.map((item) => ({
         id: `tier:${item.price}` as const,
         label: item.price,
         count: item.count,
@@ -222,58 +226,38 @@ export function HeroSmsReadonlyClient({
   );
   const cancellableActivationsCount = activations.filter(canCancelActivation).length;
 
-  async function loadOperators(country: string, preferredOperator = "") {
-    if (!country) {
-      setOperators([]);
-      setSelectedOperator("");
-      setOperatorError("");
-      return;
-    }
+  function applyOfferOperators(nextOffer: HeroSmsOfferView | null, preferredOperator = "") {
+    const nextOperators =
+      nextOffer?.operators
+        .filter((item) => item.code !== "any")
+        .map((item) => ({
+          code: item.code,
+          name: item.name,
+        })) ?? [];
 
-    setIsLoadingOperators(true);
-    setOperatorError("");
+    setOperators(nextOperators);
+    setSelectedOperator((current) => {
+      const hasOperator = (code: string) => nextOperators.some((item) => item.code === code);
 
-    try {
-      const response = await fetch(
-        `/api/hero-sms/operators?country=${encodeURIComponent(country)}`,
-      );
-      const result = (await response.json()) as OperatorsResponse & { error?: string };
-
-      if (!response.ok) {
-        throw new Error(result.error ?? "查询运营商失败");
+      if (preferredOperator && hasOperator(preferredOperator)) {
+        return preferredOperator;
       }
 
-      setOperators(result.operators);
-      setSelectedOperator((current) => {
-        const preferred =
-          preferredOperator && result.operators.some((item) => item.code === preferredOperator)
-            ? preferredOperator
-            : "";
-
-        if (preferred) {
-          return preferred;
-        }
-
-        return result.operators.some((item) => item.code === current) ? current : "";
-      });
-    } catch (error) {
-      setOperators([]);
-      setSelectedOperator("");
-      setOperatorError(error instanceof Error ? error.message : "查询运营商失败");
-    } finally {
-      setIsLoadingOperators(false);
-    }
+      return current && hasOperator(current) ? current : "";
+    });
   }
 
-  async function loadOffer(service: string, country: string) {
+  async function loadOffer(service: string, country: string, preferredOperator = "") {
     if (!service || !country) {
       setOffer(null);
+      applyOfferOperators(null);
       setOfferError("");
       return;
     }
 
     setIsLoadingOffer(true);
     setOfferError("");
+    setOperatorError("");
 
     try {
       const response = await fetch(
@@ -285,9 +269,12 @@ export function HeroSmsReadonlyClient({
         throw new Error(result.error ?? "查询报价失败");
       }
 
-      setOffer(result.offer ?? null);
+      const nextOffer = result.offer ?? null;
+      setOffer(nextOffer);
+      applyOfferOperators(nextOffer, preferredOperator);
     } catch (error) {
       setOffer(null);
+      applyOfferOperators(null);
       setOfferError(error instanceof Error ? error.message : "查询报价失败");
     } finally {
       setIsLoadingOffer(false);
@@ -348,10 +335,7 @@ export function HeroSmsReadonlyClient({
       setServiceKeyword("");
       setCountryKeyword("");
 
-      await Promise.all([
-        loadOffer(nextService, nextCountry ? String(nextCountry) : ""),
-        loadOperators(nextCountry ? String(nextCountry) : "", nextOperator),
-      ]);
+      await loadOffer(nextService, nextCountry ? String(nextCountry) : "", nextOperator);
     } catch (error) {
       setPageError(error instanceof Error ? error.message : "刷新失败");
     } finally {
@@ -579,7 +563,7 @@ export function HeroSmsReadonlyClient({
           }
 
           setAutoRetryCountdown(0);
-          await loadOffer(selectedService, selectedCountry);
+          await loadOffer(selectedService, selectedCountry, selectedOperator);
           continue;
         }
 
@@ -619,13 +603,17 @@ export function HeroSmsReadonlyClient({
       return;
     }
 
-    if (purchasePriceSelection === "manual" || purchasePriceSelection === "personal-min") {
+    if (purchasePriceSelection === "manual") {
+      return;
+    }
+
+    if (purchasePriceSelection === "personal-min" && hasSelectedOperatorPersonalMin) {
       setPurchasePrice(offer.minPrice);
       setPurchasePriceSelection("personal-min");
       return;
     }
 
-    const selectedTier = offer.tierPrices.find(
+    const selectedTier = operatorTierPrices.find(
       (item) => `tier:${item.price}` === purchasePriceSelection,
     );
 
@@ -634,13 +622,29 @@ export function HeroSmsReadonlyClient({
       return;
     }
 
-    setPurchasePrice(offer.minPrice);
-    setPurchasePriceSelection("personal-min");
-  }, [offer, purchasePriceSelection]);
+    if (hasSelectedOperatorPersonalMin) {
+      setPurchasePrice(offer.minPrice);
+      setPurchasePriceSelection("personal-min");
+      return;
+    }
 
-  useEffect(() => {
-    void loadOperators(selectedCountry);
-  }, [selectedCountry]);
+    const firstTier = operatorTierPrices[0];
+
+    if (firstTier) {
+      setPurchasePrice(firstTier.price);
+      setPurchasePriceSelection(`tier:${firstTier.price}`);
+      return;
+    }
+
+    setPurchasePrice(offer.minPrice);
+    setPurchasePriceSelection("manual");
+  }, [
+    hasSelectedOperatorPersonalMin,
+    offer,
+    operatorTierPrices,
+    purchasePriceSelection,
+    selectedOperator,
+  ]);
 
   async function copyText(value: string, field: string) {
     try {
@@ -1075,11 +1079,8 @@ export function HeroSmsReadonlyClient({
                   value={selectedOperator}
                   onChange={(event) => setSelectedOperator(event.target.value)}
                   className="w-full appearance-none rounded-2xl border border-[var(--border)] bg-white px-4 py-3 pr-12 text-base"
-                  disabled={isLoadingOperators}
                 >
-                  <option value="">
-                    {isLoadingOperators ? "运营商读取中..." : "任意运营商"}
-                  </option>
+                  <option value="">任意运营商</option>
                   {operators.map((operator) => (
                     <option key={operator.code} value={operator.code}>
                       {operator.name}
@@ -1157,30 +1158,32 @@ export function HeroSmsReadonlyClient({
                       </button>
                     ) : null}
                   </div>
-                  <div className="mt-auto border-t border-[var(--border)] pt-3">
-                    <label
-                      className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 transition ${
-                        purchasePriceSelection === "personal-min"
-                          ? "border-[var(--primary)] bg-white"
-                          : "border-transparent bg-transparent hover:bg-white/70"
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="hero-sms-purchase-price"
-                        checked={purchasePriceSelection === "personal-min"}
-                        onChange={() => applyOfferPrice("personal-min", offer.minPrice)}
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-xl font-semibold text-[var(--primary)]">
-                          {offer.minPrice}
+                  {hasSelectedOperatorPersonalMin ? (
+                    <div className="mt-auto border-t border-[var(--border)] pt-3">
+                      <label
+                        className={`flex cursor-pointer items-center gap-3 rounded-2xl border px-3 py-3 transition ${
+                          purchasePriceSelection === "personal-min"
+                            ? "border-[var(--primary)] bg-white"
+                            : "border-transparent bg-transparent hover:bg-white/70"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="hero-sms-purchase-price"
+                          checked={purchasePriceSelection === "personal-min"}
+                          onChange={() => applyOfferPrice("personal-min", offer.minPrice)}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-xl font-semibold text-[var(--primary)]">
+                            {offer.minPrice}
+                          </span>
+                          <span className="mt-1 block text-xs text-[var(--muted)]">
+                            个人最低价
+                          </span>
                         </span>
-                        <span className="mt-1 block text-xs text-[var(--muted)]">
-                          个人最低价
-                        </span>
-                      </span>
-                    </label>
-                  </div>
+                      </label>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>

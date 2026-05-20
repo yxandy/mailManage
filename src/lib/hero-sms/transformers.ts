@@ -1,6 +1,7 @@
 import type {
   HeroSmsBalanceView,
   HeroSmsCountryOption,
+  HeroSmsOfferOperatorView,
   HeroSmsOfferView,
   HeroSmsOperatorOption,
   HeroSmsServiceOption,
@@ -41,6 +42,25 @@ type HeroSmsOffersResponse = {
   data?: Record<string, Record<string, HeroSmsOfferBucket>>;
 };
 
+type HeroSmsWebOfferOperator = {
+  name?: string;
+  localName?: string;
+  activationsCount?: number;
+  countPhysical?: number;
+  freePriceOffers?: Record<string, number> | null;
+};
+
+type HeroSmsWebOfferBucket = {
+  operators?: HeroSmsWebOfferOperator[];
+  activationFinishTime?: number;
+  userPrice?: number;
+  freePrice?: number;
+};
+
+type HeroSmsWebOffersResponse = {
+  data?: Record<string, HeroSmsWebOfferBucket>;
+};
+
 type HeroSmsOperatorResponse = {
   status?: string;
   countryOperators?: Record<string, string[]>;
@@ -54,6 +74,36 @@ function formatNumericString(value: string): string {
   }
 
   return trimmed;
+}
+
+function normalizePriceKey(value: string | number): string {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return String(value).trim();
+  }
+
+  return numericValue.toFixed(4);
+}
+
+function mapPriceOffers(
+  priceOffers: Record<string, number> | null | undefined,
+): Array<{ price: string; count: number }> {
+  return Object.entries(priceOffers ?? {})
+    .map(([price, count]) => ({
+      price: normalizePriceKey(price),
+      numericPrice: Number(price),
+      count,
+    }))
+    .filter(
+      (item) =>
+        item.price &&
+        Number.isFinite(item.numericPrice) &&
+        typeof item.count === "number" &&
+        Number.isFinite(item.count),
+    )
+    .sort((a, b) => a.numericPrice - b.numericPrice)
+    .map(({ price, count }) => ({ price, count }));
 }
 
 export function parseHeroSmsBalance(text: string): HeroSmsBalanceView {
@@ -150,6 +200,57 @@ export function mapHeroSmsOffer(
     totalCount: offer.counts.total ?? 0,
     physicalCount: offer.counts.physical ?? 0,
     defaultPriceCount: offer.counts.defaultPrice ?? 0,
+    operators: [],
+  };
+}
+
+export function mapHeroSmsWebOffer(
+  response: HeroSmsWebOffersResponse,
+  service: string,
+  country: number,
+): HeroSmsOfferView | null {
+  const offer = response.data?.[service];
+
+  if (!offer || !Array.isArray(offer.operators)) {
+    return null;
+  }
+
+  const operators = offer.operators
+    .filter((item) => typeof item.name === "string" && item.name.trim())
+    .map((item): HeroSmsOfferOperatorView => {
+      const code = item.name?.trim() ?? "";
+      const tierPrices = mapPriceOffers(item.freePriceOffers);
+
+      return {
+        code,
+        name: item.localName?.trim() || code,
+        totalCount: item.activationsCount ?? 0,
+        physicalCount: item.countPhysical ?? 0,
+        personalMinCount: item.freePriceOffers?.[normalizePriceKey(offer.userPrice ?? 0)] ?? 0,
+        tierPrices,
+      };
+    });
+  const anyOperator = operators.find((item) => item.code === "any") ?? operators[0];
+  const tierPrices = anyOperator?.tierPrices ?? [];
+  const tierMinPrice = tierPrices[0]?.price;
+  const userPrice = typeof offer.userPrice === "number" ? offer.userPrice : undefined;
+  const minPrice = userPrice === undefined ? tierMinPrice : String(userPrice);
+
+  if (!minPrice || !tierMinPrice) {
+    return null;
+  }
+
+  return {
+    service,
+    country,
+    minPrice,
+    defaultPrice: minPrice,
+    tierMinPrice,
+    tierPrices,
+    totalCount: anyOperator?.totalCount ?? 0,
+    physicalCount: anyOperator?.physicalCount ?? 0,
+    defaultPriceCount: anyOperator?.personalMinCount ?? 0,
+    operators,
   };
 }
 

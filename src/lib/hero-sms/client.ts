@@ -18,6 +18,7 @@ import {
   mapHeroSmsOffer,
   mapHeroSmsOperators,
   mapHeroSmsServices,
+  mapHeroSmsWebOffer,
   parseHeroSmsBalance,
 } from "./transformers";
 
@@ -56,6 +57,24 @@ type HeroSmsOfferBucket = {
 
 type HeroSmsOffersResponse = {
   data?: Record<string, Record<string, HeroSmsOfferBucket>>;
+};
+
+type HeroSmsWebOffersResponse = {
+  data?: Record<
+    string,
+    {
+      operators?: Array<{
+        name?: string;
+        localName?: string;
+        activationsCount?: number;
+        countPhysical?: number;
+        freePriceOffers?: Record<string, number> | null;
+      }>;
+      activationFinishTime?: number;
+      userPrice?: number;
+      freePrice?: number;
+    }
+  >;
 };
 
 type HeroSmsPurchaseSuccessResponse = {
@@ -343,6 +362,17 @@ export async function getHeroSmsOperators(country: number): Promise<HeroSmsOpera
 }
 
 export async function getHeroSmsOffer(
+  service: string,
+  country: number,
+): Promise<HeroSmsOfferView | null> {
+  const response = await fetchRestJson<HeroSmsWebOffersResponse>(
+    `/left-menu/service/${encodeURIComponent(service)}/country/${encodeURIComponent(String(country))}/offers`,
+  );
+
+  return mapHeroSmsWebOffer(response, service, country);
+}
+
+export async function getLegacyHeroSmsOffer(
   service: string,
   country: number,
 ): Promise<HeroSmsOfferView | null> {
