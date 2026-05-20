@@ -3,9 +3,11 @@ import { NextResponse } from "next/server";
 import { getCurrentSession } from "@/lib/auth/auth";
 import { syncHeroSmsActivations } from "@/lib/hero-sms/client";
 import { mapHeroSmsActivationRecordToView } from "@/lib/hero-sms/activations";
+import { buildHeroSmsActivationHistoryFromRecord } from "@/lib/hero-sms/history";
 import {
   listActiveHeroSmsActivations,
   updateHeroSmsActivationByActivationId,
+  upsertHeroSmsActivationHistory,
 } from "@/lib/hero-sms/repository";
 import { createHeroSmsReceivedNotification } from "@/lib/notifications/hero-sms";
 
@@ -42,6 +44,13 @@ export async function POST() {
           smsCode: item.smsCode,
           smsText: item.smsText,
         });
+        await upsertHeroSmsActivationHistory([
+          buildHeroSmsActivationHistoryFromRecord({
+            record: currentItem,
+            smsCode: item.smsCode,
+            smsText: item.smsText,
+          }),
+        ]);
       }
     }
 

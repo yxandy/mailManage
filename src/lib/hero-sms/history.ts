@@ -1,4 +1,4 @@
-import type { HeroSmsActivationHistoryRawItem } from "./types";
+import type { HeroSmsActivationHistoryRawItem, HeroSmsActivationRecord } from "./types";
 
 export type HeroSmsActivationHistoryInput = {
   activationId: string;
@@ -82,5 +82,53 @@ export function isSuccessfulHeroSmsActivationHistoryItem(
 ): boolean {
   const normalizedStatus = item.activationStatus?.trim().toLowerCase() ?? "";
 
-  return normalizedStatus === "6" || normalizedStatus === "success" || Boolean(item.smsText);
+  return (
+    normalizedStatus === "6" ||
+    normalizedStatus === "success" ||
+    Boolean(item.smsText) ||
+    Boolean((item.rawPayload as { smsCode?: unknown }).smsCode)
+  );
+}
+
+export function buildHeroSmsActivationHistoryFromRecord(input: {
+  record: HeroSmsActivationRecord;
+  smsCode: string | null;
+  smsText: string | null;
+  receivedAt?: string | null;
+  rawPayload?: HeroSmsActivationHistoryRawItem;
+}): HeroSmsActivationHistoryInput {
+  const smsCode = input.smsCode?.trim() ?? "";
+  const smsText = input.smsText?.trim() ?? "";
+  const receivedAt = input.receivedAt?.trim() || new Date().toISOString();
+
+  return {
+    activationId: input.record.activation_id,
+    activationDate: receivedAt,
+    phoneNumber: input.record.phone_number,
+    activationCost: String(input.record.activation_cost),
+    currencyCode: input.record.currency_code,
+    serviceCode: input.record.service_code,
+    serviceName: input.record.service_name,
+    countryId: input.record.country_id,
+    countryName: input.record.country_name,
+    operatorCode: input.record.operator_code,
+    activationStatus: "6",
+    smsText: smsText || smsCode || null,
+    rawPayload:
+      input.rawPayload ?? {
+        activationId: input.record.activation_id,
+        date: receivedAt,
+        phone: input.record.phone_number,
+        sms: smsText || null,
+        smsCode: smsCode || null,
+        cost: input.record.activation_cost,
+        status: "6",
+        currency: input.record.currency_code,
+        serviceCode: input.record.service_code,
+        serviceName: input.record.service_name,
+        countryCode: input.record.country_id,
+        countryName: input.record.country_name,
+        activationOperator: input.record.operator_code,
+      },
+  };
 }

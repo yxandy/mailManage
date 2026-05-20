@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 
 import type { HeroSmsWebhookPayload } from "@/lib/hero-sms/types";
+import { buildHeroSmsActivationHistoryFromRecord } from "@/lib/hero-sms/history";
 import {
   findHeroSmsActivationByActivationId,
   listActiveHeroSmsActivations,
   updateHeroSmsActivationByActivationId,
+  upsertHeroSmsActivationHistory,
 } from "@/lib/hero-sms/repository";
 import { createHeroSmsReceivedNotification } from "@/lib/notifications/hero-sms";
 
@@ -101,6 +103,10 @@ export async function POST(request: Request) {
     const smsText = typeof body.text === "string" ? body.text.trim() : "";
     const smsCode =
       body.code === undefined || body.code === null ? "" : String(body.code).trim();
+    const receivedAt =
+      body.receivedAt === undefined || body.receivedAt === null
+        ? null
+        : String(body.receivedAt).trim();
 
     console.log("[hero-sms webhook] updating activation", {
       activationId,
@@ -120,6 +126,18 @@ export async function POST(request: Request) {
       smsCode: smsCode || record.sms_code,
       smsText: smsText || record.sms_text,
     });
+
+    if (smsCode || smsText) {
+      await upsertHeroSmsActivationHistory([
+        buildHeroSmsActivationHistoryFromRecord({
+          record,
+          smsCode: smsCode || record.sms_code,
+          smsText: smsText || record.sms_text,
+          receivedAt,
+          rawPayload: body,
+        }),
+      ]);
+    }
 
     console.log("[hero-sms webhook] activation updated", {
       activationId,

@@ -173,7 +173,7 @@ function isSuccessfulHistoryItem(item) {
 }
 
 async function fetchHeroSmsHistoryWindow({ apiKey, start, end }) {
-  const items = [];
+  let items = [];
 
   for (let offset = 0; ; offset += PAGE_SIZE) {
     const params = new URLSearchParams({
@@ -182,7 +182,7 @@ async function fetchHeroSmsHistoryWindow({ apiKey, start, end }) {
       start: String(toUnixSeconds(start)),
       end: String(toUnixSeconds(end)),
       offset: String(offset),
-      size: String(PAGE_SIZE),
+      limit: String(PAGE_SIZE),
     });
     const response = await fetch(`${HERO_SMS_COMPAT_BASE_URL}?${params.toString()}`, {
       method: "GET",
@@ -206,9 +206,9 @@ async function fetchHeroSmsHistoryWindow({ apiKey, start, end }) {
       throw new Error(`HeroSMS 历史接口返回异常：${text}`);
     }
 
-    items.push(...pageItems);
+    items = pageItems;
 
-    if (pageItems.length < PAGE_SIZE) {
+    if (pageItems.length < offset + PAGE_SIZE) {
       break;
     }
   }
