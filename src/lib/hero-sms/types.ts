@@ -2,6 +2,10 @@ export type HeroSmsBalanceView = {
   balance: string;
 };
 
+export type HeroSmsCostSummaryView = {
+  totalCost: string;
+};
+
 export type HeroSmsServiceOption = {
   code: string;
   name: string;

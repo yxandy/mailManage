@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   HeroSmsActivationHistoryRecord,
   HeroSmsActivationRecord,
+  HeroSmsCostSummaryView,
   HeroSmsFavoriteRecord,
   HeroSmsPurchaseResultView,
 } from "./types";
@@ -204,4 +205,25 @@ export async function listHeroSmsActivationHistory(): Promise<HeroSmsActivationH
   }
 
   return (data ?? []) as HeroSmsActivationHistoryRecord[];
+}
+
+export async function getHeroSmsCostSummary(): Promise<HeroSmsCostSummaryView> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("hero_sms_activation_history")
+    .select("activation_cost");
+
+  if (error) {
+    throw new Error(`查询 HeroSMS 成本汇总失败：${error.message}`);
+  }
+
+  const totalCost = (data ?? []).reduce(
+    (sum, item: { activation_cost: string | number | null }) =>
+      sum + Number(item.activation_cost ?? 0),
+    0,
+  );
+
+  return {
+    totalCost: totalCost.toFixed(4),
+  };
 }

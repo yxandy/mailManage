@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type {
   HeroSmsActivationView,
   HeroSmsBalanceView,
+  HeroSmsCostSummaryView,
   HeroSmsCountryOption,
   HeroSmsFavoriteView,
   HeroSmsOfferView,
@@ -21,6 +22,7 @@ import {
 
 type HeroSmsReadonlyClientProps = {
   initialBalance: HeroSmsBalanceView;
+  initialCostSummary: HeroSmsCostSummaryView;
   initialServices: HeroSmsServiceOption[];
   initialCountries: HeroSmsCountryOption[];
   initialActivations: HeroSmsActivationView[];
@@ -145,6 +147,7 @@ function formatCountdown(ms: number): string {
 
 export function HeroSmsReadonlyClient({
   initialBalance,
+  initialCostSummary,
   initialServices,
   initialCountries,
   initialActivations,
@@ -194,6 +197,10 @@ export function HeroSmsReadonlyClient({
   const stopRetryRef = useRef(false);
 
   const formattedBalance = `$${Number(balance).toFixed(4)}`;
+  const formattedCost = `$${Number(initialCostSummary.totalCost).toFixed(4)}`;
+  const formattedTotalSpend = `$${(
+    Number(balance) + Number(initialCostSummary.totalCost)
+  ).toFixed(4)}`;
   const selectedServiceOption = services.find((service) => service.code === selectedService) ?? null;
   const selectedCountryOption =
     countries.find((country) => String(country.id) === selectedCountry) ?? null;
@@ -863,7 +870,9 @@ export function HeroSmsReadonlyClient({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-xl font-semibold">短信接码</h1>
             <div className="flex flex-wrap items-center gap-3">
-              <p className="text-xl font-semibold">{formattedBalance}</p>
+              <p className="text-xl font-semibold">
+                {formattedBalance} + {formattedCost} = {formattedTotalSpend}
+              </p>
               <a
                 href="/dashboard"
                 className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm"
