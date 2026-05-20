@@ -3,6 +3,8 @@ import type {
   HeroSmsActivationView,
   HeroSmsFavoriteRecord,
   HeroSmsFavoriteView,
+  HeroSmsPriceMonitorRecord,
+  HeroSmsPriceMonitorView,
 } from "./types";
 
 const HERO_SMS_CURRENCY_LABELS: Record<number, string> = {
@@ -152,5 +154,26 @@ export function mapHeroSmsFavoriteRecordToView(
     countryId: record.country_id,
     countryName: record.country_name,
     operatorCode: record.operator_code ?? "",
+  };
+}
+
+export function mapHeroSmsPriceMonitorRecordToView(
+  record: HeroSmsPriceMonitorRecord,
+): HeroSmsPriceMonitorView {
+  return {
+    id: record.id,
+    serviceCode: record.service_code,
+    serviceName: record.service_name,
+    countryId: record.country_id,
+    countryName: record.country_name,
+    operatorCode: record.operator_code,
+    operatorName: record.operator_name,
+    targetPrice: Number(record.target_price).toFixed(4),
+    status: record.status,
+    lastCheckedAt: record.last_checked_at,
+    lastAvailableCount: record.last_available_count,
+    lastError: record.last_error,
+    triggeredAt: record.triggered_at,
+    createdAt: record.created_at,
   };
 }

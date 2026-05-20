@@ -209,6 +209,44 @@ export type HeroSmsFavoriteView = {
   operatorCode: string;
 };
 
+export type HeroSmsPriceMonitorStatus = "active" | "paused" | "triggered" | "deleted";
+
+export type HeroSmsPriceMonitorRecord = {
+  id: string;
+  service_code: string;
+  service_name: string;
+  country_id: number;
+  country_name: string;
+  operator_code: string;
+  operator_name: string;
+  target_price: string;
+  status: HeroSmsPriceMonitorStatus;
+  last_checked_at: string | null;
+  last_available_count: number | null;
+  last_error: string | null;
+  triggered_at: string | null;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type HeroSmsPriceMonitorView = {
+  id: string;
+  serviceCode: string;
+  serviceName: string;
+  countryId: number;
+  countryName: string;
+  operatorCode: string;
+  operatorName: string;
+  targetPrice: string;
+  status: HeroSmsPriceMonitorStatus;
+  lastCheckedAt: string | null;
+  lastAvailableCount: number | null;
+  lastError: string | null;
+  triggeredAt: string | null;
+  createdAt: string;
+};
+
 export type HeroSmsWebhookPayload = {
   activationId?: string | number;
   service?: string;

@@ -10,6 +10,7 @@ import type {
   HeroSmsFavoriteView,
   HeroSmsOfferView,
   HeroSmsOperatorOption,
+  HeroSmsPriceMonitorView,
   HeroSmsPurchaseErrorView,
   HeroSmsServiceOption,
 } from "@/lib/hero-sms/types";
@@ -27,6 +28,7 @@ type HeroSmsReadonlyClientProps = {
   initialCountries: HeroSmsCountryOption[];
   initialActivations: HeroSmsActivationView[];
   initialFavorites: HeroSmsFavoriteView[];
+  initialPriceMonitors: HeroSmsPriceMonitorView[];
 };
 
 type OptionsResponse = {
@@ -46,6 +48,10 @@ type ActivationsResponse = {
 
 type FavoritesResponse = {
   items: HeroSmsFavoriteView[];
+};
+
+type PriceMonitorsResponse = {
+  items: HeroSmsPriceMonitorView[];
 };
 
 type ActivationAction = "cancel" | "finish" | "retry-sms";
@@ -141,6 +147,41 @@ function formatCountdown(ms: number): string {
   return `${seconds}秒`;
 }
 
+function getPriceMonitorStatusText(status: HeroSmsPriceMonitorView["status"]): string {
+  if (status === "active") {
+    return "监控中";
+  }
+
+  if (status === "paused") {
+    return "已暂停";
+  }
+
+  if (status === "triggered") {
+    return "已提醒";
+  }
+
+  return "已删除";
+}
+
+function formatDateTime(value: string | null): string {
+  if (!value) {
+    return "-";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return date.toLocaleString("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function HeroSmsReadonlyClient({
   initialBalance,
   initialCostSummary,
@@ -148,6 +189,7 @@ export function HeroSmsReadonlyClient({
   initialCountries,
   initialActivations,
   initialFavorites,
+  initialPriceMonitors,
 }: HeroSmsReadonlyClientProps) {
   const initialFavorite = initialFavorites[0] ?? null;
   const [balance, setBalance] = useState(initialBalance.balance);
@@ -167,6 +209,7 @@ export function HeroSmsReadonlyClient({
   const [purchaseError, setPurchaseError] = useState("");
   const [activations, setActivations] = useState(initialActivations);
   const [favorites, setFavorites] = useState(initialFavorites);
+  const [priceMonitors, setPriceMonitors] = useState(initialPriceMonitors);
   const [offer, setOffer] = useState<HeroSmsOfferView | null>(null);
   const [pageError, setPageError] = useState("");
   const [offerError, setOfferError] = useState("");
@@ -188,6 +231,8 @@ export function HeroSmsReadonlyClient({
   const [autoRetryCountdown, setAutoRetryCountdown] = useState(0);
   const [isStoppingRetry, setIsStoppingRetry] = useState(false);
   const [isDeletingFavoriteId, setIsDeletingFavoriteId] = useState("");
+  const [isSavingPriceMonitor, setIsSavingPriceMonitor] = useState(false);
+  const [actioningPriceMonitorId, setActioningPriceMonitorId] = useState("");
   const [showAllTierPrices, setShowAllTierPrices] = useState(false);
   const stopRetryRef = useRef(false);
 
@@ -205,6 +250,19 @@ export function HeroSmsReadonlyClient({
   const selectedOfferOperator =
     offer?.operators.find((item) => item.code === (selectedOperator || "any")) ??
     (selectedOperator ? null : offer?.operators[0] ?? null);
+  const selectedOperatorCode = selectedOperator || "any";
+  const selectedOperatorName =
+    selectedOfferOperator?.name ??
+    (selectedOperator ? selectedOperator : "任意运营商");
+  const normalizedPurchasePrice = Number(purchasePrice);
+  const selectedPriceMonitorExists = priceMonitors.some(
+    (monitor) =>
+      monitor.serviceCode === selectedService &&
+      String(monitor.countryId) === selectedCountry &&
+      monitor.operatorCode === selectedOperatorCode &&
+      monitor.targetPrice ===
+        (Number.isFinite(normalizedPurchasePrice) ? normalizedPurchasePrice.toFixed(4) : ""),
+  );
   const operatorTierPrices = useMemo(
     () => selectedOfferOperator?.tierPrices ?? offer?.tierPrices ?? [],
     [offer?.tierPrices, selectedOfferOperator?.tierPrices],
@@ -458,6 +516,122 @@ export function HeroSmsReadonlyClient({
       setPurchaseError(error instanceof Error ? error.message : "删除收藏失败");
     } finally {
       setIsDeletingFavoriteId("");
+    }
+  }
+
+  async function handleCreatePriceMonitor() {
+    if (isSavingPriceMonitor) {
+      return;
+    }
+
+    if (!selectedServiceOption) {
+      setPurchaseError("请先选择服务。");
+      return;
+    }
+
+    if (!selectedCountryOption) {
+      setPurchaseError("请先选择国家。");
+      return;
+    }
+
+    if (!purchasePrice.trim()) {
+      setPurchaseError("请先选择或输入要监控的价格。");
+      return;
+    }
+
+    setIsSavingPriceMonitor(true);
+    setPurchaseError("");
+
+    try {
+      const response = await fetch("/api/hero-sms/price-monitors", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          serviceCode: selectedServiceOption.code,
+          serviceName: selectedServiceOption.name,
+          countryId: selectedCountryOption.id,
+          countryName: selectedCountryOption.name,
+          operatorCode: selectedOperatorCode,
+          operatorName: selectedOperatorName,
+          targetPrice: purchasePrice,
+        }),
+      });
+      const result = (await response.json()) as PriceMonitorsResponse & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "创建价格监控失败");
+      }
+
+      setPriceMonitors(result.items);
+      setPurchaseLogs((current) => [
+        ...current,
+        `已创建价格监控：${selectedServiceOption.name} / ${selectedCountryOption.name} / ${selectedOperatorName} / ${Number(purchasePrice).toFixed(4)}。`,
+      ]);
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : "创建价格监控失败");
+    } finally {
+      setIsSavingPriceMonitor(false);
+    }
+  }
+
+  async function handleUpdatePriceMonitor(
+    id: string,
+    status: HeroSmsPriceMonitorView["status"],
+  ) {
+    if (actioningPriceMonitorId) {
+      return;
+    }
+
+    setActioningPriceMonitorId(id);
+    setPurchaseError("");
+
+    try {
+      const response = await fetch(`/api/hero-sms/price-monitors/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status }),
+      });
+      const result = (await response.json()) as PriceMonitorsResponse & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "更新价格监控失败");
+      }
+
+      setPriceMonitors(result.items);
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : "更新价格监控失败");
+    } finally {
+      setActioningPriceMonitorId("");
+    }
+  }
+
+  async function handleDeletePriceMonitor(id: string) {
+    if (actioningPriceMonitorId) {
+      return;
+    }
+
+    setActioningPriceMonitorId(id);
+    setPurchaseError("");
+
+    try {
+      const response = await fetch(`/api/hero-sms/price-monitors/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+      });
+      const result = (await response.json()) as PriceMonitorsResponse & { error?: string };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "删除价格监控失败");
+      }
+
+      setPriceMonitors(result.items);
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : "删除价格监控失败");
+    } finally {
+      setActioningPriceMonitorId("");
     }
   }
 
@@ -888,6 +1062,100 @@ export function HeroSmsReadonlyClient({
         </section>
 
         <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">价格监控</p>
+              <h2 className="mt-2 text-2xl font-semibold">目标价位有货提醒</h2>
+            </div>
+          </div>
+
+          {priceMonitors.length === 0 ? (
+            <div className="mt-5 rounded-[24px] border border-dashed border-[var(--border)] bg-white px-5 py-8 text-sm text-[var(--muted)]">
+              当前还没有价格监控。选择服务、国家、运营商和价格后，可以添加一个有货提醒。
+            </div>
+          ) : (
+            <div className="mt-5 overflow-x-auto rounded-[24px] border border-[var(--border)] bg-white">
+              <table className="min-w-full table-fixed border-separate border-spacing-0 text-sm">
+                <thead className="bg-[var(--panel-strong)] text-left text-[var(--muted)]">
+                  <tr>
+                    <th className="w-[24%] px-4 py-3 font-medium">目标</th>
+                    <th className="w-[14%] px-4 py-3 font-medium">运营商</th>
+                    <th className="w-[11%] px-4 py-3 font-medium">价格</th>
+                    <th className="w-[11%] px-4 py-3 font-medium">库存</th>
+                    <th className="w-[12%] px-4 py-3 font-medium">状态</th>
+                    <th className="w-[15%] px-4 py-3 font-medium">上次检查</th>
+                    <th className="w-[13%] px-4 py-3 text-right font-medium">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {priceMonitors.map((monitor) => (
+                    <tr key={monitor.id} className="align-middle">
+                      <td className="border-t border-[var(--border)] px-4 py-3">
+                        <p className="font-medium">{monitor.serviceName}</p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">
+                          {monitor.countryName} / {monitor.serviceCode} / {monitor.countryId}
+                        </p>
+                        {monitor.lastError ? (
+                          <p className="mt-1 text-xs text-[var(--danger)]">{monitor.lastError}</p>
+                        ) : null}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3">
+                        {monitor.operatorName}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3 font-semibold">
+                        {monitor.targetPrice}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3">
+                        {monitor.lastAvailableCount === null
+                          ? "-"
+                          : formatCompactCount(monitor.lastAvailableCount)}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3">
+                        {getPriceMonitorStatusText(monitor.status)}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3 text-[var(--muted)]">
+                        {formatDateTime(monitor.lastCheckedAt)}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3">
+                        <div className="flex flex-wrap justify-end gap-2">
+                          {monitor.status === "active" ? (
+                            <button
+                              type="button"
+                              className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                              onClick={() => void handleUpdatePriceMonitor(monitor.id, "paused")}
+                              disabled={actioningPriceMonitorId === monitor.id}
+                            >
+                              暂停
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                              onClick={() => void handleUpdatePriceMonitor(monitor.id, "active")}
+                              disabled={actioningPriceMonitorId === monitor.id}
+                            >
+                              {monitor.status === "triggered" ? "继续监听" : "启用"}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="rounded-xl border border-[var(--danger)] px-3 py-2 text-xs text-[var(--danger)] disabled:cursor-not-allowed disabled:opacity-60"
+                            onClick={() => void handleDeletePriceMonitor(monitor.id)}
+                            disabled={actioningPriceMonitorId === monitor.id}
+                          >
+                            删除
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
           <div className="rounded-[24px] border border-[var(--border)] bg-[var(--panel-strong)] px-5 py-5">
             <div>
               <p className="text-xs uppercase tracking-[0.25em] text-[var(--muted)]">收藏</p>
@@ -1209,6 +1477,18 @@ export function HeroSmsReadonlyClient({
                   className="w-full min-w-0 rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
                 />
               </label>
+              <button
+                type="button"
+                className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm font-semibold transition hover:border-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={handleCreatePriceMonitor}
+                disabled={isSavingPriceMonitor || selectedPriceMonitorExists}
+              >
+                {isSavingPriceMonitor
+                  ? "添加监控中..."
+                  : selectedPriceMonitorExists
+                    ? "已监控此价位"
+                    : "监控此价位"}
+              </button>
               <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
                 <button
                   type="button"

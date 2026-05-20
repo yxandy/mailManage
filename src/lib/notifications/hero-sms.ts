@@ -1,4 +1,5 @@
 import type { HeroSmsActivationRecord, HeroSmsPurchaseResultView } from "@/lib/hero-sms/types";
+import type { HeroSmsPriceMonitorRecord } from "@/lib/hero-sms/types";
 
 import { buildHeroSmsReceivedDedupeKey } from "./hero-sms-dedupe";
 import { createNotificationEvent } from "./repository";
@@ -7,6 +8,12 @@ const HERO_SMS_NOTIFICATION_SOURCE = "hero-sms";
 
 function normalizeNotificationPart(value: string | null | undefined): string {
   return value?.trim() ?? "";
+}
+
+function normalizeNotificationPrice(value: string | number): string {
+  const numericValue = Number(value);
+
+  return Number.isFinite(numericValue) ? numericValue.toFixed(4) : String(value).trim();
 }
 
 export async function createHeroSmsAutoRetryPurchaseNotification(input: {
@@ -84,6 +91,41 @@ export async function createHeroSmsReceivedNotification(input: {
       countryName: input.record.country_name,
       smsCode: smsCode || null,
       smsText: smsText || null,
+    },
+  });
+}
+
+export async function createHeroSmsPriceMonitorNotification(input: {
+  monitor: HeroSmsPriceMonitorRecord;
+  availableCount: number;
+  checkedAt: string;
+}): Promise<void> {
+  const targetPrice = normalizeNotificationPrice(input.monitor.target_price);
+
+  await createNotificationEvent({
+    source: HERO_SMS_NOTIFICATION_SOURCE,
+    eventType: "price_stock_available",
+    dedupeKey: `hero-sms:price-monitor:${input.monitor.id}:${input.monitor.updated_at}`,
+    title: "HeroSMS 价格有货",
+    content: [
+      `服务：${input.monitor.service_name}（${input.monitor.service_code}）`,
+      `国家：${input.monitor.country_name}（${input.monitor.country_id}）`,
+      `运营商：${input.monitor.operator_name}（${input.monitor.operator_code}）`,
+      `目标价格：${targetPrice}`,
+      `当前库存：${input.availableCount}`,
+      `检查时间：${input.checkedAt}`,
+    ].join("\n"),
+    payload: {
+      monitorId: input.monitor.id,
+      serviceCode: input.monitor.service_code,
+      serviceName: input.monitor.service_name,
+      countryId: input.monitor.country_id,
+      countryName: input.monitor.country_name,
+      operatorCode: input.monitor.operator_code,
+      operatorName: input.monitor.operator_name,
+      targetPrice,
+      availableCount: input.availableCount,
+      checkedAt: input.checkedAt,
     },
   });
 }

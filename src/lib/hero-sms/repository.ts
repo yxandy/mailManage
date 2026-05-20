@@ -5,6 +5,8 @@ import type {
   HeroSmsActivationRecord,
   HeroSmsCostSummaryView,
   HeroSmsFavoriteRecord,
+  HeroSmsPriceMonitorRecord,
+  HeroSmsPriceMonitorStatus,
   HeroSmsPurchaseResultView,
 } from "./types";
 import type { HeroSmsActivationHistoryInput } from "./history";
@@ -226,4 +228,170 @@ export async function getHeroSmsCostSummary(): Promise<HeroSmsCostSummaryView> {
   return {
     totalCost: totalCost.toFixed(4),
   };
+}
+
+export async function listHeroSmsPriceMonitors(): Promise<HeroSmsPriceMonitorRecord[]> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("hero_sms_price_monitors")
+    .select("*")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`查询 HeroSMS 价格监控失败：${error.message}`);
+  }
+
+  return (data ?? []) as HeroSmsPriceMonitorRecord[];
+}
+
+export async function listActiveHeroSmsPriceMonitors(): Promise<HeroSmsPriceMonitorRecord[]> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("hero_sms_price_monitors")
+    .select("*")
+    .eq("status", "active")
+    .is("deleted_at", null)
+    .order("last_checked_at", { ascending: true, nullsFirst: true });
+
+  if (error) {
+    throw new Error(`查询待检查 HeroSMS 价格监控失败：${error.message}`);
+  }
+
+  return (data ?? []) as HeroSmsPriceMonitorRecord[];
+}
+
+export async function createHeroSmsPriceMonitor(input: {
+  serviceCode: string;
+  serviceName: string;
+  countryId: number;
+  countryName: string;
+  operatorCode: string;
+  operatorName: string;
+  targetPrice: string;
+}): Promise<void> {
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase.from("hero_sms_price_monitors").insert({
+    service_code: input.serviceCode,
+    service_name: input.serviceName,
+    country_id: input.countryId,
+    country_name: input.countryName,
+    operator_code: input.operatorCode || "any",
+    operator_name: input.operatorName,
+    target_price: input.targetPrice,
+  });
+
+  if (error) {
+    if (error.code === "23505") {
+      throw new Error("这个服务、国家、运营商和价格已经在监控中");
+    }
+
+    throw new Error(`创建 HeroSMS 价格监控失败：${error.message}`);
+  }
+}
+
+export async function updateHeroSmsPriceMonitorStatus(
+  id: string,
+  status: Exclude<HeroSmsPriceMonitorStatus, "deleted">,
+): Promise<void> {
+  const supabase = createSupabaseServerClient();
+  const updates: Partial<HeroSmsPriceMonitorRecord> = { status };
+
+  if (status === "active") {
+    updates.triggered_at = null;
+    updates.last_error = null;
+  }
+
+  const { error } = await supabase
+    .from("hero_sms_price_monitors")
+    .update(updates)
+    .eq("id", id)
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new Error(`更新 HeroSMS 价格监控状态失败：${error.message}`);
+  }
+}
+
+export async function softDeleteHeroSmsPriceMonitor(id: string): Promise<void> {
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .from("hero_sms_price_monitors")
+    .update({
+      status: "deleted",
+      deleted_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new Error(`删除 HeroSMS 价格监控失败：${error.message}`);
+  }
+}
+
+export async function markHeroSmsPriceMonitorChecked(input: {
+  id: string;
+  checkedAt: string;
+  availableCount: number;
+}): Promise<void> {
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .from("hero_sms_price_monitors")
+    .update({
+      last_checked_at: input.checkedAt,
+      last_available_count: input.availableCount,
+      last_error: null,
+    })
+    .eq("id", input.id)
+    .eq("status", "active")
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new Error(`更新 HeroSMS 价格监控检查结果失败：${error.message}`);
+  }
+}
+
+export async function markHeroSmsPriceMonitorTriggered(input: {
+  id: string;
+  checkedAt: string;
+  availableCount: number;
+}): Promise<void> {
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .from("hero_sms_price_monitors")
+    .update({
+      status: "triggered",
+      last_checked_at: input.checkedAt,
+      last_available_count: input.availableCount,
+      triggered_at: input.checkedAt,
+      last_error: null,
+    })
+    .eq("id", input.id)
+    .eq("status", "active")
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new Error(`标记 HeroSMS 价格监控已触发失败：${error.message}`);
+  }
+}
+
+export async function markHeroSmsPriceMonitorCheckFailed(input: {
+  id: string;
+  checkedAt: string;
+  errorMessage: string;
+}): Promise<void> {
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .from("hero_sms_price_monitors")
+    .update({
+      last_checked_at: input.checkedAt,
+      last_error: input.errorMessage,
+    })
+    .eq("id", input.id)
+    .eq("status", "active")
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new Error(`记录 HeroSMS 价格监控失败状态失败：${error.message}`);
+  }
 }

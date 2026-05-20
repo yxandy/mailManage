@@ -126,3 +126,32 @@ test("notification_events 表包含提醒队列核心字段与唯一去重键", 
     /create index if not exists idx_notification_events_pending\s+on public\.notification_events \(status, next_attempt_at, created_at\);/i,
   );
 });
+
+test("hero_sms_price_monitors 表包含价格库存监控字段与索引", () => {
+  const schemaSql = readFileSync(schemaFilePath, "utf8");
+
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.hero_sms_price_monitors[\s\S]*\n\s*service_code\s+text\s+not null,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.hero_sms_price_monitors[\s\S]*\n\s*operator_code\s+text\s+not null\s+default 'any',?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.hero_sms_price_monitors[\s\S]*\n\s*target_price\s+numeric\(12,4\)\s+not null,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.hero_sms_price_monitors[\s\S]*status in \('active', 'paused', 'triggered', 'deleted'\)/i,
+  );
+  assert.match(
+    schemaSql,
+    /create unique index if not exists idx_hero_sms_price_monitors_unique_live_target\s+on public\.hero_sms_price_monitors \(service_code, country_id, operator_code, target_price\)\s+where deleted_at is null;/i,
+  );
+  assert.match(
+    schemaSql,
+    /create index if not exists idx_hero_sms_price_monitors_status_checked_at\s+on public\.hero_sms_price_monitors \(status, last_checked_at\);/i,
+  );
+});
