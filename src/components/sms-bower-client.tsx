@@ -270,6 +270,7 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
 
     try {
       const deadline = Date.now() + PURCHASE_MAX_WAIT_MS;
+      let shouldNotifyOnSuccess = false;
 
       while (Date.now() <= deadline) {
         if (cancelledPurchaseIdsRef.current.has(item.id)) {
@@ -290,11 +291,13 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
             price: item.price,
             providerId: item.providerId,
             providerIds: item.providerIds,
+            notifyOnSuccess: shouldNotifyOnSuccess,
           }),
         });
         const result = (await response.json()) as PurchaseResponse;
 
         if (response.status === 409 && result.pending) {
+          shouldNotifyOnSuccess = true;
           setPurchaseStates((current) => ({
             ...current,
             [item.id]: "waiting",

@@ -11,4 +11,5 @@ import "../lib/hero-sms/history.test.ts";
 import "../lib/hero-sms/price-monitors.test.ts";
 import "../lib/notifications/hero-sms.test.ts";
 import "../lib/notifications/retry.test.ts";
+import "../lib/notifications/sms-bower.test.ts";
 import "../lib/sms-bower/client.test.ts";

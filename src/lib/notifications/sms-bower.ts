@@ -1,4 +1,8 @@
-import type { SmsBowerActivationRecord } from "@/lib/sms-bower/types";
+import type {
+  SmsBowerActivationRecord,
+  SmsBowerPriceResult,
+  SmsBowerPurchaseResult,
+} from "@/lib/sms-bower/types";
 
 import { createNotificationEvent } from "./repository";
 import { buildSmsBowerReceivedDedupeKey } from "./sms-bower-dedupe";
@@ -7,6 +11,43 @@ const SMS_BOWER_NOTIFICATION_SOURCE = "sms-bower";
 
 function normalizeNotificationPart(value: string | null | undefined): string {
   return value?.trim() ?? "";
+}
+
+export async function createSmsBowerWaitedPurchaseNotification(input: {
+  purchase: SmsBowerPurchaseResult;
+  priceItem: Pick<
+    SmsBowerPriceResult,
+    "serviceCode" | "countryCode" | "countryName" | "providerId" | "providerIds" | "price"
+  >;
+  serviceName: string;
+}): Promise<void> {
+  await createNotificationEvent({
+    source: SMS_BOWER_NOTIFICATION_SOURCE,
+    eventType: "waited_purchase_succeeded",
+    dedupeKey: `sms-bower:waited-purchase-succeeded:${input.purchase.activationId}`,
+    title: "SMS Bower 等待购买成功",
+    content: [
+      `服务：${input.serviceName}（${input.priceItem.serviceCode}）`,
+      `国家：${input.priceItem.countryName}（${input.priceItem.countryCode}）`,
+      `号码：${input.purchase.phoneNumber}`,
+      `Provider：${input.priceItem.providerId || input.purchase.activationOperator || "未提供"}`,
+      `价格：${input.purchase.activationCost}`,
+      `目标价位：${input.priceItem.price}`,
+      `activationId：${input.purchase.activationId}`,
+    ].join("\n"),
+    payload: {
+      activationId: input.purchase.activationId,
+      phoneNumber: input.purchase.phoneNumber,
+      serviceCode: input.priceItem.serviceCode,
+      serviceName: input.serviceName,
+      countryId: input.priceItem.countryCode,
+      countryName: input.priceItem.countryName,
+      providerId: input.priceItem.providerId || null,
+      providerIds: input.priceItem.providerIds,
+      activationCost: input.purchase.activationCost,
+      targetPrice: input.priceItem.price,
+    },
+  });
 }
 
 export async function createSmsBowerReceivedNotification(input: {

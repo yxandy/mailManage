@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentSession } from "@/lib/auth/auth";
+import { createSmsBowerWaitedPurchaseNotification } from "@/lib/notifications/sms-bower";
 import { SmsBowerNoNumbersError, purchaseSmsBowerNumber } from "@/lib/sms-bower/client";
 import { createSmsBowerActivation } from "@/lib/sms-bower/repository";
 
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
       price?: string;
       providerId?: string;
       providerIds?: string;
+      notifyOnSuccess?: boolean;
     };
     const serviceCode = body.serviceCode?.trim() ?? "";
     const serviceName = body.serviceName?.trim() ?? serviceCode;
@@ -30,6 +32,7 @@ export async function POST(request: Request) {
     const price = body.price?.trim() ?? "";
     const providerId = body.providerId?.trim() ?? "";
     const providerIds = body.providerIds?.trim() ?? "";
+    const notifyOnSuccess = body.notifyOnSuccess === true;
 
     if (!serviceCode) {
       return NextResponse.json({ error: "缺少 serviceCode 参数" }, { status: 400 });
@@ -69,6 +72,21 @@ export async function POST(request: Request) {
         requestedProviderIds: providerIds,
       },
     });
+
+    if (notifyOnSuccess) {
+      await createSmsBowerWaitedPurchaseNotification({
+        purchase: result,
+        priceItem: {
+          serviceCode,
+          countryCode,
+          countryName,
+          providerId,
+          providerIds,
+          price,
+        },
+        serviceName,
+      });
+    }
 
     return NextResponse.json({ result });
   } catch (error) {
