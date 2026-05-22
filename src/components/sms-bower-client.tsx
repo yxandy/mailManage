@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type {
+  SmsBowerActivationView,
   SmsBowerCountryOption,
   SmsBowerPriceResult,
   SmsBowerPurchaseResult,
@@ -12,6 +13,7 @@ import type {
 type SmsBowerClientProps = {
   initialServices: SmsBowerServiceOption[];
   initialCountries: SmsBowerCountryOption[];
+  initialActivations: SmsBowerActivationView[];
 };
 
 type PricesResponse = {
@@ -22,6 +24,11 @@ type PricesResponse = {
 type PurchaseResponse = {
   result?: SmsBowerPurchaseResult;
   pending?: boolean;
+  error?: string;
+};
+
+type ActivationsResponse = {
+  items: SmsBowerActivationView[];
   error?: string;
 };
 
@@ -71,7 +78,11 @@ function sleep(milliseconds: number): Promise<void> {
   });
 }
 
-export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
+function getSmsBowerSmsDisplay(item: SmsBowerActivationView): string {
+  return item.smsCode?.trim() || item.smsText?.trim() || "等待接收短信";
+}
+
+export function SmsBowerClient({ initialServices, initialActivations }: SmsBowerClientProps) {
   const [services] = useState(initialServices);
   const [selectedService, setSelectedService] = useState("");
   const [serviceKeyword, setServiceKeyword] = useState("");
@@ -84,6 +95,9 @@ export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
   const [purchasingId, setPurchasingId] = useState("");
   const [waitingPurchaseId, setWaitingPurchaseId] = useState("");
   const [purchaseResult, setPurchaseResult] = useState<SmsBowerPurchaseResult | null>(null);
+  const [activations, setActivations] = useState(initialActivations);
+  const [isRefreshingActivations, setIsRefreshingActivations] = useState(false);
+  const [activationActionId, setActivationActionId] = useState("");
 
   const selectedServiceOption =
     services.find((service) => service.code === selectedService) ?? null;
@@ -91,6 +105,97 @@ export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
     () => filterServices(services, serviceKeyword),
     [serviceKeyword, services],
   );
+  const shouldPollActivations = activations.some((item) =>
+    ["STATUS_WAIT_CODE", "STATUS_WAIT_RETRY"].includes(item.activationStatus),
+  );
+
+  async function loadActivations() {
+    const response = await fetch("/api/sms-bower/activations", {
+      cache: "no-store",
+    });
+    const result = (await response.json()) as ActivationsResponse;
+
+    if (!response.ok) {
+      throw new Error(result.error ?? "读取活动号码失败");
+    }
+
+    setActivations(result.items);
+  }
+
+  async function refreshActivationStatus() {
+    if (isRefreshingActivations) {
+      return;
+    }
+
+    setIsRefreshingActivations(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/sms-bower/activations/refresh", {
+        method: "POST",
+      });
+      const result = (await response.json()) as ActivationsResponse;
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "刷新短信状态失败");
+      }
+
+      setActivations(result.items);
+    } catch (refreshError) {
+      setError(refreshError instanceof Error ? refreshError.message : "刷新短信状态失败");
+    } finally {
+      setIsRefreshingActivations(false);
+    }
+  }
+
+  async function handleActivationAction(
+    item: SmsBowerActivationView,
+    action: "cancel" | "finish" | "retry-sms",
+  ) {
+    if (activationActionId) {
+      return;
+    }
+
+    setActivationActionId(item.id);
+    setError("");
+
+    try {
+      const response = await fetch(`/api/sms-bower/activations/${item.id}/action`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action }),
+      });
+      const result = (await response.json()) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "操作失败");
+      }
+
+      await loadActivations();
+    } catch (actionError) {
+      setError(actionError instanceof Error ? actionError.message : "操作失败");
+    } finally {
+      setActivationActionId("");
+    }
+  }
+
+  useEffect(() => {
+    if (!shouldPollActivations) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void loadActivations().catch(() => {
+        // 本地轮询只用于接收 webhook 写库后的新状态，失败时不打扰当前操作。
+      });
+    }, 3000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [shouldPollActivations]);
 
   async function handleSearch() {
     if (isSearching) {
@@ -168,8 +273,11 @@ export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
           },
           body: JSON.stringify({
             serviceCode: item.serviceCode,
+            serviceName: selectedServiceOption?.name ?? item.serviceCode,
             countryCode: item.countryCode,
+            countryName: item.countryName,
             price: item.price,
+            providerId: item.providerId,
             providerIds: item.providerIds,
           }),
         });
@@ -186,6 +294,7 @@ export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
         }
 
         setPurchaseResult(result.result);
+        await loadActivations();
         return;
       }
 
@@ -211,6 +320,101 @@ export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
               返回邮箱管理
             </a>
           </div>
+        </section>
+
+        <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">活动号码</p>
+              <h2 className="mt-2 text-2xl font-semibold">当前等待短信的号码</h2>
+            </div>
+            <button
+              type="button"
+              className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
+              onClick={() => void refreshActivationStatus()}
+              disabled={isRefreshingActivations || activations.length === 0}
+            >
+              {isRefreshingActivations ? "刷新中..." : "刷新短信状态"}
+            </button>
+          </div>
+
+          {activations.length === 0 ? (
+            <div className="mt-5 rounded-[24px] border border-dashed border-[var(--border)] bg-white px-5 py-8 text-sm text-[var(--muted)]">
+              当前还没有活动中的 SMS Bower 号码。
+            </div>
+          ) : (
+            <div className="mt-5 overflow-x-auto rounded-[24px] border border-[var(--border)] bg-white">
+              <table className="min-w-full table-fixed border-separate border-spacing-0 text-sm">
+                <thead className="bg-[var(--panel-strong)] text-left text-[var(--muted)]">
+                  <tr>
+                    <th className="w-[22%] px-4 py-3 font-medium">号码</th>
+                    <th className="w-[16%] px-4 py-3 font-medium">成本</th>
+                    <th className="w-[18%] px-4 py-3 font-medium">国家</th>
+                    <th className="w-[16%] px-4 py-3 font-medium">状态</th>
+                    <th className="w-[20%] px-4 py-3 font-medium">最新短信</th>
+                    <th className="w-[8%] px-4 py-3 text-right font-medium">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activations.map((item) => (
+                    <tr key={item.id} className="align-middle">
+                      <td className="border-t border-[var(--border)] px-4 py-3 font-medium">
+                        {item.phoneNumber}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3">
+                        {item.activationCost}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3">
+                        <p>{item.countryName}</p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">{item.serviceName}</p>
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3 font-medium">
+                        {item.activationStatusText}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3 text-[var(--muted)]">
+                        {getSmsBowerSmsDisplay(item)}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3 text-right">
+                        <div className="flex flex-col items-end gap-2">
+                          {item.smsCode || item.smsText ? (
+                            <>
+                              {item.canGetAnotherSms ? (
+                                <button
+                                  type="button"
+                                  className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-70"
+                                  onClick={() => void handleActivationAction(item, "retry-sms")}
+                                  disabled={Boolean(activationActionId)}
+                                >
+                                  再次接收
+                                </button>
+                              ) : null}
+                              <button
+                                type="button"
+                                className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-70"
+                                onClick={() => void handleActivationAction(item, "finish")}
+                                disabled={Boolean(activationActionId)}
+                              >
+                                完成
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-70"
+                              onClick={() => void handleActivationAction(item, "cancel")}
+                              disabled={Boolean(activationActionId)}
+                            >
+                              取消
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">

@@ -4,8 +4,11 @@ import {
   mapSmsBowerFrontendPrices,
   mapSmsBowerFrontendServices,
   mapSmsBowerPurchaseV2,
+  mapSmsBowerStatusText,
 } from "./transformers";
 import type {
+  SmsBowerActivationRecord,
+  SmsBowerActivationStatus,
   SmsBowerCountryOption,
   SmsBowerPriceResult,
   SmsBowerPurchaseResult,
@@ -148,4 +151,46 @@ export async function purchaseSmsBowerNumber(input: {
   );
 
   return mapSmsBowerPurchaseV2(response);
+}
+
+export async function getSmsBowerActivationStatus(
+  activationId: string,
+): Promise<SmsBowerActivationStatus> {
+  const text = await fetchSmsBowerText(
+    new URLSearchParams({
+      action: "getStatus",
+      id: activationId,
+    }),
+  );
+
+  return mapSmsBowerStatusText(text);
+}
+
+export async function setSmsBowerActivationStatus(input: {
+  activationId: string;
+  status: "3" | "6" | "8";
+}): Promise<void> {
+  await fetchSmsBowerText(
+    new URLSearchParams({
+      action: "setStatus",
+      id: input.activationId,
+      status: input.status,
+    }),
+  );
+}
+
+export async function syncSmsBowerActivations(
+  records: SmsBowerActivationRecord[],
+): Promise<Array<SmsBowerActivationStatus & { activationId: string }>> {
+  const updates = [];
+
+  for (const record of records) {
+    const status = await getSmsBowerActivationStatus(record.activation_id);
+    updates.push({
+      activationId: record.activation_id,
+      ...status,
+    });
+  }
+
+  return updates;
 }

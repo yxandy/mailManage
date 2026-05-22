@@ -105,6 +105,29 @@ create table if not exists public.hero_sms_activation_history (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.sms_bower_activations (
+  id uuid primary key default gen_random_uuid(),
+  activation_id text not null unique,
+  phone_number text not null,
+  service_code text not null,
+  service_name text not null,
+  country_id integer not null,
+  country_name text not null,
+  provider_id text,
+  provider_ids text not null,
+  activation_cost numeric(12,4) not null,
+  activation_operator text,
+  can_get_another_sms boolean not null default false,
+  activation_time timestamptz,
+  activation_status text not null default 'STATUS_WAIT_CODE',
+  sms_code text,
+  sms_text text,
+  is_active boolean not null default true,
+  raw_payload jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
 create table if not exists public.hero_sms_price_monitors (
   id uuid primary key default gen_random_uuid(),
   service_code text not null,
@@ -191,6 +214,12 @@ create index if not exists idx_hero_sms_activation_history_service_country
 create index if not exists idx_hero_sms_activation_history_operator
   on public.hero_sms_activation_history (operator_code);
 
+create index if not exists idx_sms_bower_activations_is_active
+  on public.sms_bower_activations (is_active);
+
+create index if not exists idx_sms_bower_activations_created_at
+  on public.sms_bower_activations (created_at desc);
+
 create unique index if not exists idx_hero_sms_price_monitors_unique_live_target
   on public.hero_sms_price_monitors (service_code, country_id, operator_code, target_price)
   where deleted_at is null;
@@ -250,6 +279,12 @@ execute function public.set_updated_at();
 drop trigger if exists set_hero_sms_activation_history_updated_at on public.hero_sms_activation_history;
 create trigger set_hero_sms_activation_history_updated_at
 before update on public.hero_sms_activation_history
+for each row
+execute function public.set_updated_at();
+
+drop trigger if exists set_sms_bower_activations_updated_at on public.sms_bower_activations;
+create trigger set_sms_bower_activations_updated_at
+before update on public.sms_bower_activations
 for each row
 execute function public.set_updated_at();
 

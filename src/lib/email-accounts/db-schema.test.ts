@@ -106,6 +106,27 @@ test("hero_sms_activation_history 表包含成功历史分析字段与原始载�
   );
 });
 
+test("sms_bower_activations 表包含活动号码和短信字段", () => {
+  const schemaSql = readFileSync(schemaFilePath, "utf8");
+
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.sms_bower_activations[\s\S]*\n\s*activation_id\s+text\s+not null unique,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.sms_bower_activations[\s\S]*\n\s*provider_ids\s+text\s+not null,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.sms_bower_activations[\s\S]*\n\s*sms_code\s+text,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create index if not exists idx_sms_bower_activations_is_active\s+on public\.sms_bower_activations \(is_active\);/i,
+  );
+});
+
 test("notification_events 表包含提醒队列核心字段与唯一去重键", () => {
   const schemaSql = readFileSync(schemaFilePath, "utf8");
 

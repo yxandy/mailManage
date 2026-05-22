@@ -2,6 +2,7 @@ import type {
   SmsBowerCountryOption,
   SmsBowerPriceResult,
   SmsBowerPurchaseResult,
+  SmsBowerActivationStatus,
   SmsBowerServiceOption,
 } from "./types";
 
@@ -353,4 +354,42 @@ export function mapSmsBowerPurchaseV2(
     activationOperator: response.activationOperator ?? null,
     canGetAnotherSms: Boolean(response.canGetAnotherSms),
   };
+}
+
+export function mapSmsBowerStatusText(text: string): SmsBowerActivationStatus {
+  const normalizedText = text.trim();
+
+  if (normalizedText.startsWith("STATUS_OK:")) {
+    return {
+      activationStatus: "STATUS_OK",
+      smsCode: normalizedText.slice("STATUS_OK:".length).trim() || null,
+      isActive: true,
+    };
+  }
+
+  if (normalizedText.startsWith("STATUS_WAIT_RETRY:")) {
+    return {
+      activationStatus: "STATUS_WAIT_RETRY",
+      smsCode: normalizedText.slice("STATUS_WAIT_RETRY:".length).trim() || null,
+      isActive: true,
+    };
+  }
+
+  if (normalizedText === "STATUS_WAIT_CODE") {
+    return {
+      activationStatus: "STATUS_WAIT_CODE",
+      smsCode: null,
+      isActive: true,
+    };
+  }
+
+  if (normalizedText === "STATUS_CANCEL") {
+    return {
+      activationStatus: "STATUS_CANCEL",
+      smsCode: null,
+      isActive: false,
+    };
+  }
+
+  throw new Error(`SMS Bower 状态返回异常：${normalizedText}`);
 }

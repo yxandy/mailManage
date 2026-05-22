@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getCurrentSession } from "@/lib/auth/auth";
 import { SmsBowerNoNumbersError, purchaseSmsBowerNumber } from "@/lib/sms-bower/client";
+import { createSmsBowerActivation } from "@/lib/sms-bower/repository";
 
 export const runtime = "nodejs";
 
@@ -15,13 +16,19 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       serviceCode?: string;
+      serviceName?: string;
       countryCode?: number;
+      countryName?: string;
       price?: string;
+      providerId?: string;
       providerIds?: string;
     };
     const serviceCode = body.serviceCode?.trim() ?? "";
+    const serviceName = body.serviceName?.trim() ?? serviceCode;
     const countryCode = Number(body.countryCode);
+    const countryName = body.countryName?.trim() ?? `国家 ${countryCode}`;
     const price = body.price?.trim() ?? "";
+    const providerId = body.providerId?.trim() ?? "";
     const providerIds = body.providerIds?.trim() ?? "";
 
     if (!serviceCode) {
@@ -45,6 +52,22 @@ export async function POST(request: Request) {
       countryId: countryCode,
       price,
       providerIds,
+    });
+
+    await createSmsBowerActivation({
+      purchase: result,
+      priceItem: {
+        serviceCode,
+        countryCode,
+        countryName,
+        providerId,
+        providerIds,
+      },
+      serviceName,
+      rawPayload: {
+        requestedPrice: price,
+        requestedProviderIds: providerIds,
+      },
     });
 
     return NextResponse.json({ result });
