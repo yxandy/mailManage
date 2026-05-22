@@ -4,6 +4,7 @@ type RequiredEnvKey =
   | "SUPABASE_SERVICE_ROLE_KEY"
   | "SESSION_SECRET"
   | "HERO_SMS_API_KEY"
+  | "SMS_BOWER_API_KEY"
   | "NOTIFICATION_WORKER_TOKEN";
 
 export function getRequiredEnv(key: RequiredEnvKey): string {

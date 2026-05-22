@@ -235,6 +235,14 @@ export function DashboardClient({
                   >
                     H
                   </a>
+                  <a
+                    href="/dashboard/sms-bower"
+                    title="进入 SMS Bower 价格筛选页"
+                    aria-label="进入 SMS Bower 价格筛选页"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[var(--border)] bg-white text-lg font-semibold text-[var(--foreground)] transition hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                  >
+                    B
+                  </a>
                 </div>
                 <p className="text-sm leading-7 text-[var(--muted)]">
                   当前登录管理员：{username}，当前为 {tier.toUpperCase()}，共 {total} 条有效记录。
