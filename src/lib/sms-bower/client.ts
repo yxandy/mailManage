@@ -1,10 +1,9 @@
 import { getRequiredEnv } from "../env";
 
 import {
-  mapSmsBowerCountries,
-  mapSmsBowerPricesV3,
+  mapSmsBowerFrontendPrices,
+  mapSmsBowerFrontendServices,
   mapSmsBowerPurchaseV2,
-  mapSmsBowerServices,
 } from "./transformers";
 import type {
   SmsBowerCountryOption,
@@ -14,6 +13,7 @@ import type {
 } from "./types";
 
 const SMS_BOWER_COMPAT_BASE_URL = "https://smsbower.page/stubs/handler_api.php";
+const SMS_BOWER_WEB_BASE_URL = "https://smsbower.app";
 
 function getSmsBowerApiKey(): string {
   return getRequiredEnv("SMS_BOWER_API_KEY");
@@ -57,47 +57,67 @@ async function fetchSmsBowerJson<T>(params: URLSearchParams): Promise<T> {
   }
 }
 
+async function fetchSmsBowerWebJson<T>(path: string, params: URLSearchParams): Promise<T> {
+  const response = await fetch(`${SMS_BOWER_WEB_BASE_URL}${path}?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      "X-Requested-With": "XMLHttpRequest",
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`SMS Bower 前台价格请求失败：${response.status}`);
+  }
+
+  const text = await response.text();
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(`SMS Bower 前台价格返回了无法解析的 JSON：${text.slice(0, 200)}`);
+  }
+}
+
 export async function getSmsBowerOptions(): Promise<{
   services: SmsBowerServiceOption[];
   countries: SmsBowerCountryOption[];
 }> {
-  const [servicesResponse, countriesResponse] = await Promise.all([
-    fetchSmsBowerJson<Parameters<typeof mapSmsBowerServices>[0]>(
-      new URLSearchParams({
-        action: "getServicesList",
-        lang: "cn",
-      }),
-    ),
-    fetchSmsBowerJson<Parameters<typeof mapSmsBowerCountries>[0]>(
-      new URLSearchParams({
-        action: "getCountries",
-      }),
-    ),
-  ]);
+  const frontendServicesResponse = await fetchSmsBowerWebJson<
+    Parameters<typeof mapSmsBowerFrontendServices>[0]
+  >(
+    "/activations/getPricesByService",
+    new URLSearchParams({
+      serviceId: "4",
+      withPopular: "true",
+    }),
+  );
 
   return {
-    services: mapSmsBowerServices(servicesResponse),
-    countries: mapSmsBowerCountries(countriesResponse),
+    services: mapSmsBowerFrontendServices(frontendServicesResponse),
+    countries: [],
   };
 }
 
 export async function searchSmsBowerPrices(input: {
+  serviceId: number;
   serviceCode: string;
   minPrice: number;
   maxPrice: number;
-  countries: SmsBowerCountryOption[];
 }): Promise<SmsBowerPriceResult[]> {
-  const response = await fetchSmsBowerJson<Parameters<typeof mapSmsBowerPricesV3>[0]["response"]>(
+  const response = await fetchSmsBowerWebJson<Parameters<typeof mapSmsBowerFrontendPrices>[0]["response"]>(
+    "/activations/getPricesByService",
     new URLSearchParams({
-      action: "getPricesV3",
-      service: input.serviceCode,
+      serviceId: String(input.serviceId),
+      withPopular: "true",
     }),
   );
 
-  return mapSmsBowerPricesV3({
+  return mapSmsBowerFrontendPrices({
     response,
+    serviceId: input.serviceId,
     serviceCode: input.serviceCode,
-    countries: input.countries,
     minPrice: input.minPrice,
     maxPrice: input.maxPrice,
   });

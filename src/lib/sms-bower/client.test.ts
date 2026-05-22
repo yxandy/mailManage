@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import {
   mapSmsBowerCountries,
+  mapSmsBowerFrontendPrices,
+  mapSmsBowerFrontendServices,
   mapSmsBowerPricesV3,
   mapSmsBowerPurchaseV2,
   mapSmsBowerServices,
@@ -12,14 +14,29 @@ test("SMS Bower 服务列表会被转换为前端选项", () => {
   const result = mapSmsBowerServices({
     status: "success",
     services: [
-      { code: "go", name: "Google" },
-      { code: "dr", name: "OpenAI" },
+      { id: 1, code: "go", name: "Google" },
+      { id: 2, code: "dr", name: "OpenAI" },
     ],
   });
 
   assert.deepEqual(result, [
-    { code: "go", name: "Google" },
-    { code: "dr", name: "OpenAI" },
+    { id: 1, code: "go", name: "Google" },
+    { id: 2, code: "dr", name: "OpenAI" },
+  ]);
+});
+
+test("SMS Bower 前台服务列表会保留数字 ID 与购买代码", () => {
+  const result = mapSmsBowerFrontendServices({
+    services: {
+      "4": { id: 4, title: "Instagram", activate_org_code: "ig" },
+      "10": { id: 10, title: "Google", activate_org_code: "go" },
+      bad: { title: "Broken" },
+    },
+  });
+
+  assert.deepEqual(result, [
+    { id: 10, code: "go", name: "Google" },
+    { id: 4, code: "ig", name: "Instagram" },
   ]);
 });
 
@@ -64,21 +81,90 @@ test("SMS Bower V3 价格会筛出指定服务与价格区间的国家", () => {
   assert.deepEqual(result, [
     {
       id: "16:201:0.0200",
+      serviceId: 0,
       serviceCode: "dr",
       countryId: 16,
+      countryCode: 16,
       countryName: "英格兰",
+      countryType: "normal",
       providerId: "201",
       price: "0.0200",
       count: 8,
+      rankId: null,
+      rank: "未标注",
     },
     {
       id: "6:101:0.0450",
+      serviceId: 0,
       serviceCode: "dr",
       countryId: 6,
+      countryCode: 6,
       countryName: "印度尼西亚",
+      countryType: "normal",
       providerId: "101",
       price: "0.0450",
       count: 3,
+      rankId: null,
+      rank: "未标注",
+    },
+  ]);
+});
+
+test("SMS Bower 前台价格会保留职级、虚拟国家和 provider 信息", () => {
+  const result = mapSmsBowerFrontendPrices({
+    serviceId: 4,
+    serviceCode: "ig",
+    minPrice: 0.01,
+    maxPrice: 0.05,
+    response: {
+      services: {
+        "4": {
+          id: 4,
+          title: "Instagram",
+          activate_org_code: "ig",
+          countries: {
+            "352": {
+              id: 352,
+              title: "United States (virtual)",
+              iso: "UV",
+              activate_org_code: "12",
+              positions: {
+                "1|0.02": {
+                  price: 0.02,
+                  count: 5,
+                  rank: { id: 1, description: "gold" },
+                  agent_ids: [3379],
+                  agent_prices: { "3379": 0.02 },
+                },
+                "3|0.08": {
+                  price: 0.08,
+                  count: 9,
+                  rank: { id: 3, description: "bronze" },
+                  agent_ids: [2579],
+                  agent_prices: { "2579": 0.08 },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  assert.deepEqual(result, [
+    {
+      id: "4:352:3379:1|0.02:0.0200",
+      serviceId: 4,
+      serviceCode: "ig",
+      countryId: 352,
+      countryCode: 12,
+      countryName: "United States (virtual)",
+      countryType: "virtual",
+      providerId: "3379",
+      price: "0.0200",
+      count: 5,
+      rankId: 1,
+      rank: "黄金",
     },
   ]);
 });

@@ -15,12 +15,12 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       serviceCode?: string;
-      countryId?: number;
+      countryCode?: number;
       price?: string;
       providerId?: string;
     };
     const serviceCode = body.serviceCode?.trim() ?? "";
-    const countryId = Number(body.countryId);
+    const countryCode = Number(body.countryCode);
     const price = body.price?.trim() ?? "";
     const providerId = body.providerId?.trim() ?? "";
 
@@ -28,8 +28,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "缺少 serviceCode 参数" }, { status: 400 });
     }
 
-    if (!Number.isFinite(countryId)) {
-      return NextResponse.json({ error: "缺少有效的 countryId 参数" }, { status: 400 });
+    if (!Number.isFinite(countryCode)) {
+      return NextResponse.json({ error: "缺少有效的 countryCode 参数" }, { status: 400 });
     }
 
     if (!price || !Number.isFinite(Number(price)) || Number(price) <= 0) {
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 
     const result = await purchaseSmsBowerNumber({
       serviceCode,
-      countryId,
+      countryId: countryCode,
       price,
       providerId,
     });

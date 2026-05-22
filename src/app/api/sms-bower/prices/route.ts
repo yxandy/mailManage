@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentSession } from "@/lib/auth/auth";
-import { getSmsBowerOptions, searchSmsBowerPrices } from "@/lib/sms-bower/client";
+import { searchSmsBowerPrices } from "@/lib/sms-bower/client";
 
 export const runtime = "nodejs";
 
@@ -15,11 +15,16 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const serviceCode = searchParams.get("service")?.trim() ?? "";
+    const serviceId = Number(searchParams.get("serviceId") ?? "");
     const minPrice = Number(searchParams.get("minPrice") ?? "");
     const maxPrice = Number(searchParams.get("maxPrice") ?? "");
 
     if (!serviceCode) {
       return NextResponse.json({ error: "缺少 service 参数" }, { status: 400 });
+    }
+
+    if (!Number.isFinite(serviceId)) {
+      return NextResponse.json({ error: "缺少有效的 serviceId 参数" }, { status: 400 });
     }
 
     if (!Number.isFinite(minPrice) || minPrice < 0) {
@@ -30,12 +35,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "缺少有效的最高价" }, { status: 400 });
     }
 
-    const { countries } = await getSmsBowerOptions();
     const items = await searchSmsBowerPrices({
+      serviceId,
       serviceCode,
       minPrice,
       maxPrice,
-      countries,
     });
 
     return NextResponse.json({ items });

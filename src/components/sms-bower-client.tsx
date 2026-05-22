@@ -48,6 +48,19 @@ function filterServices(
     .slice(0, 12);
 }
 
+function getRankClassName(rankId: number | null): string {
+  switch (rankId) {
+    case 1:
+      return "border-amber-300 bg-amber-50 text-amber-700";
+    case 2:
+      return "border-zinc-300 bg-zinc-50 text-zinc-700";
+    case 3:
+      return "border-orange-300 bg-orange-50 text-orange-700";
+    default:
+      return "border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)]";
+  }
+}
+
 export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
   const [services] = useState(initialServices);
   const [selectedService, setSelectedService] = useState("");
@@ -78,6 +91,11 @@ export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
       return;
     }
 
+    if (!selectedServiceOption?.id) {
+      setError("当前服务缺少可查询的数字 ID，无法使用前台价格接口。");
+      return;
+    }
+
     const min = Number(minPrice);
     const max = Number(maxPrice);
 
@@ -98,6 +116,7 @@ export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
     try {
       const params = new URLSearchParams({
         service: selectedService,
+        serviceId: String(selectedServiceOption.id),
         minPrice: String(min),
         maxPrice: String(max),
       });
@@ -134,7 +153,7 @@ export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
         },
         body: JSON.stringify({
           serviceCode: item.serviceCode,
-          countryId: item.countryId,
+          countryCode: item.countryCode,
           price: item.price,
           providerId: item.providerId,
         }),
@@ -300,11 +319,12 @@ export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
               <table className="min-w-full table-fixed border-separate border-spacing-0 text-sm">
                 <thead className="bg-[var(--panel-strong)] text-left text-[var(--muted)]">
                   <tr>
-                    <th className="w-[28%] px-4 py-3 font-medium">国家</th>
-                    <th className="w-[20%] px-4 py-3 font-medium">供应商</th>
-                    <th className="w-[14%] px-4 py-3 font-medium">价格</th>
-                    <th className="w-[14%] px-4 py-3 font-medium">库存</th>
-                    <th className="w-[24%] px-4 py-3 text-right font-medium">操作</th>
+                    <th className="w-[24%] px-4 py-3 font-medium">国家</th>
+                    <th className="w-[14%] px-4 py-3 font-medium">职级</th>
+                    <th className="w-[18%] px-4 py-3 font-medium">Provider</th>
+                    <th className="w-[13%] px-4 py-3 font-medium">价格</th>
+                    <th className="w-[12%] px-4 py-3 font-medium">库存</th>
+                    <th className="w-[19%] px-4 py-3 text-right font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -312,7 +332,17 @@ export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
                     <tr key={item.id} className="align-middle">
                       <td className="border-t border-[var(--border)] px-4 py-3">
                         <p className="font-medium">{item.countryName}</p>
-                        <p className="mt-1 text-xs text-[var(--muted)]">{item.countryId}</p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">
+                          {item.countryCode}
+                          {item.countryType === "virtual" ? " · 虚拟" : ""}
+                        </p>
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getRankClassName(item.rankId)}`}
+                        >
+                          {item.rank}
+                        </span>
                       </td>
                       <td className="border-t border-[var(--border)] px-4 py-3">
                         {item.providerId}

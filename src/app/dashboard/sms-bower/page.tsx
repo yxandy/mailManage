@@ -11,7 +11,7 @@ export default async function SmsBowerPage() {
   return (
     <SmsBowerClient
       initialServices={options.services}
-      initialCountries={options.countries}
+      initialCountries={[]}
     />
   );
 }
