@@ -9,7 +9,7 @@ import type {
   SmsBowerPurchaseResult,
   SmsBowerServiceOption,
 } from "@/lib/sms-bower/types";
-import { splitPhoneNumberByDialCode } from "@/lib/phone-numbers";
+import { splitPhoneNumberByKnownDialCode } from "@/lib/phone-numbers";
 
 type SmsBowerClientProps = {
   initialServices: SmsBowerServiceOption[];
@@ -402,10 +402,7 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
                     <tr key={item.id} className="align-middle">
                       <td className="border-t border-[var(--border)] px-4 py-3 font-medium">
                         {(() => {
-                          const phone = splitPhoneNumberByDialCode({
-                            phoneNumber: item.phoneNumber,
-                            dialCode: item.countryPhoneCode,
-                          });
+                          const phone = splitPhoneNumberByKnownDialCode(item.phoneNumber);
 
                           return (
                             <span className="inline-flex max-w-full items-baseline gap-2">

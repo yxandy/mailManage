@@ -345,7 +345,7 @@ export function mapSmsBowerPurchaseV2(
   }
 
   const countryCode = Number(response.countryCode);
-  const countryPhoneCode = Number(response.countryPhoneCode ?? response.countryCode);
+  const countryPhoneCode = Number(response.countryPhoneCode);
 
   return {
     activationId,

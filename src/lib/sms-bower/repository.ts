@@ -31,27 +31,56 @@ export async function createSmsBowerActivation(input: {
   rawPayload?: Record<string, unknown>;
 }): Promise<void> {
   const supabase = createSupabaseServerClient();
-  const { error } = await supabase.from("sms_bower_activations").upsert(
-    {
-      activation_id: input.purchase.activationId,
-      phone_number: input.purchase.phoneNumber,
-      service_code: input.priceItem.serviceCode,
-      service_name: input.serviceName,
-      country_id: input.priceItem.countryCode,
-      country_name: input.priceItem.countryName,
-      country_phone_code: input.purchase.countryPhoneCode,
-      provider_id: input.priceItem.providerId || null,
-      provider_ids: input.priceItem.providerIds,
-      activation_cost: input.purchase.activationCost,
-      activation_operator: input.purchase.activationOperator,
-      can_get_another_sms: input.purchase.canGetAnotherSms,
-      activation_time: input.purchase.activationTime,
-      activation_status: "STATUS_WAIT_CODE",
-      is_active: true,
-      raw_payload: input.rawPayload ?? {},
-    },
-    { onConflict: "activation_id" },
-  );
+  const row = {
+    activation_id: input.purchase.activationId,
+    phone_number: input.purchase.phoneNumber,
+    service_code: input.priceItem.serviceCode,
+    service_name: input.serviceName,
+    country_id: input.priceItem.countryCode,
+    country_name: input.priceItem.countryName,
+    country_phone_code: input.purchase.countryPhoneCode,
+    provider_id: input.priceItem.providerId || null,
+    provider_ids: input.priceItem.providerIds,
+    activation_cost: input.purchase.activationCost,
+    activation_operator: input.purchase.activationOperator,
+    can_get_another_sms: input.purchase.canGetAnotherSms,
+    activation_time: input.purchase.activationTime,
+    activation_status: "STATUS_WAIT_CODE",
+    is_active: true,
+    raw_payload: input.rawPayload ?? {},
+  };
+  const { error } = await supabase
+    .from("sms_bower_activations")
+    .upsert(row, { onConflict: "activation_id" });
+
+  if (error?.message.includes("country_phone_code")) {
+    const fallbackRow: Omit<typeof row, "country_phone_code"> = {
+      activation_id: row.activation_id,
+      phone_number: row.phone_number,
+      service_code: row.service_code,
+      service_name: row.service_name,
+      country_id: row.country_id,
+      country_name: row.country_name,
+      provider_id: row.provider_id,
+      provider_ids: row.provider_ids,
+      activation_cost: row.activation_cost,
+      activation_operator: row.activation_operator,
+      can_get_another_sms: row.can_get_another_sms,
+      activation_time: row.activation_time,
+      activation_status: row.activation_status,
+      is_active: row.is_active,
+      raw_payload: row.raw_payload,
+    };
+    const { error: fallbackError } = await supabase
+      .from("sms_bower_activations")
+      .upsert(fallbackRow, { onConflict: "activation_id" });
+
+    if (fallbackError) {
+      throw new Error(`写入 SMS Bower 活动记录失败：${fallbackError.message}`);
+    }
+
+    return;
+  }
 
   if (error) {
     throw new Error(`写入 SMS Bower 活动记录失败：${error.message}`);
