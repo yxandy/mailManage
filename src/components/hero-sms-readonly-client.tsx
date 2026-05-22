@@ -1601,8 +1601,8 @@ export function HeroSmsReadonlyClient({
                     <th className="w-[12%] px-4 py-3 font-medium">当前状态</th>
                     <th className="w-[9%] px-4 py-3 font-medium">运营商</th>
                     <th className="w-[13%] px-4 py-3 font-medium">备注</th>
-                    <th className="w-[18%] px-4 py-3 font-medium">最新短信</th>
-                    <th className="w-[13%] px-4 py-3 font-medium">操作</th>
+                    <th className="w-[17%] px-4 py-3 font-medium">最新短信</th>
+                    <th className="w-[14%] px-4 py-3 font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>

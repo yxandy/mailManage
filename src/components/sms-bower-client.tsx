@@ -393,8 +393,8 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
                     <th className="w-[16%] px-4 py-3 font-medium">成本</th>
                     <th className="w-[18%] px-4 py-3 font-medium">国家</th>
                     <th className="w-[16%] px-4 py-3 font-medium">状态</th>
-                    <th className="w-[20%] px-4 py-3 font-medium">最新短信</th>
-                    <th className="w-[8%] px-4 py-3 text-right font-medium">操作</th>
+                    <th className="w-[13%] px-4 py-3 font-medium">最新短信</th>
+                    <th className="w-[15%] px-4 py-3 text-right font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -435,13 +435,13 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
                         {getSmsBowerSmsDisplay(item)}
                       </td>
                       <td className="border-t border-[var(--border)] px-4 py-3 text-right">
-                        <div className="flex flex-col items-end gap-2">
+                        <div className="flex min-h-8 items-center justify-end gap-2 whitespace-nowrap">
                           {item.smsCode || item.smsText ? (
                             <>
                               {item.canGetAnotherSms ? (
                                 <button
                                   type="button"
-                                  className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-70"
+                                  className="h-8 rounded-xl border border-[var(--border)] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-70"
                                   onClick={() => void handleActivationAction(item, "retry-sms")}
                                   disabled={Boolean(activationActionId)}
                                 >
@@ -450,7 +450,7 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
                               ) : null}
                               <button
                                 type="button"
-                                className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-70"
+                                className="h-8 rounded-xl border border-[var(--border)] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-70"
                                 onClick={() => void handleActivationAction(item, "finish")}
                                 disabled={Boolean(activationActionId)}
                               >
@@ -460,7 +460,7 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
                           ) : (
                             <button
                               type="button"
-                              className="rounded-xl border border-[var(--border)] px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-70"
+                              className="h-8 rounded-xl border border-[var(--border)] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-70"
                               onClick={() => void handleActivationAction(item, "cancel")}
                               disabled={Boolean(activationActionId)}
                             >
