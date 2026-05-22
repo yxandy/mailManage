@@ -88,6 +88,8 @@ test("SMS Bower V3 价格会筛出指定服务与价格区间的国家", () => {
       countryName: "英格兰",
       countryType: "normal",
       providerId: "201",
+      providerIds: "201",
+      providerCount: 1,
       price: "0.0200",
       count: 8,
       rankId: null,
@@ -102,6 +104,8 @@ test("SMS Bower V3 价格会筛出指定服务与价格区间的国家", () => {
       countryName: "印度尼西亚",
       countryType: "normal",
       providerId: "101",
+      providerIds: "101",
+      providerCount: 1,
       price: "0.0450",
       count: 3,
       rankId: null,
@@ -110,7 +114,7 @@ test("SMS Bower V3 价格会筛出指定服务与价格区间的国家", () => {
   ]);
 });
 
-test("SMS Bower 前台价格会保留职级、虚拟国家和 provider 信息", () => {
+test("SMS Bower 前台价格会按官网档位聚合 provider 并过滤虚拟国家", () => {
   const result = mapSmsBowerFrontendPrices({
     serviceId: 4,
     serviceCode: "ig",
@@ -145,6 +149,21 @@ test("SMS Bower 前台价格会保留职级、虚拟国家和 provider 信息", 
                 },
               },
             },
+            "6": {
+              id: 6,
+              title: "印度尼西亚",
+              iso: "ID",
+              activate_org_code: "6",
+              positions: {
+                "1|0.02": {
+                  price: 0.02,
+                  count: 5,
+                  rank: { id: 1, description: "gold" },
+                  agent_ids: [3379, 2579],
+                  agent_prices: { "3379": 0.02, "2579": 0.02 },
+                },
+              },
+            },
           },
         },
       },
@@ -153,14 +172,16 @@ test("SMS Bower 前台价格会保留职级、虚拟国家和 provider 信息", 
 
   assert.deepEqual(result, [
     {
-      id: "4:352:3379:1|0.02:0.0200",
+      id: "4:6:1|0.02:0.0200",
       serviceId: 4,
       serviceCode: "ig",
-      countryId: 352,
-      countryCode: 12,
-      countryName: "United States (virtual)",
-      countryType: "virtual",
+      countryId: 6,
+      countryCode: 6,
+      countryName: "印度尼西亚",
+      countryType: "normal",
       providerId: "3379",
+      providerIds: "3379,2579",
+      providerCount: 2,
       price: "0.0200",
       count: 5,
       rankId: 1,

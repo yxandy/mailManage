@@ -18,6 +18,8 @@ export type SmsBowerPriceResult = {
   countryName: string;
   countryType: "virtual" | "normal";
   providerId: string;
+  providerIds: string;
+  providerCount: number;
   price: string;
   count: number;
   rankId: number | null;

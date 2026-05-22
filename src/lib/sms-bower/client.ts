@@ -15,6 +15,13 @@ import type {
 const SMS_BOWER_COMPAT_BASE_URL = "https://smsbower.page/stubs/handler_api.php";
 const SMS_BOWER_WEB_BASE_URL = "https://smsbower.app";
 
+export class SmsBowerNoNumbersError extends Error {
+  constructor() {
+    super("SMS Bower 当前没有符合条件的号码");
+    this.name = "SmsBowerNoNumbersError";
+  }
+}
+
 function getSmsBowerApiKey(): string {
   return getRequiredEnv("SMS_BOWER_API_KEY");
 }
@@ -41,7 +48,7 @@ async function fetchSmsBowerText(params: URLSearchParams): Promise<string> {
   }
 
   if (text.startsWith("NO_NUMBERS")) {
-    throw new Error("SMS Bower 当前没有符合条件的号码");
+    throw new SmsBowerNoNumbersError();
   }
 
   return text;
@@ -127,7 +134,7 @@ export async function purchaseSmsBowerNumber(input: {
   serviceCode: string;
   countryId: number;
   price: string;
-  providerId: string;
+  providerIds: string;
 }): Promise<SmsBowerPurchaseResult> {
   const response = await fetchSmsBowerJson<Parameters<typeof mapSmsBowerPurchaseV2>[0]>(
     new URLSearchParams({
@@ -136,7 +143,7 @@ export async function purchaseSmsBowerNumber(input: {
       country: String(input.countryId),
       minPrice: input.price,
       maxPrice: input.price,
-      providerIds: input.providerId,
+      providerIds: input.providerIds,
     }),
   );
 

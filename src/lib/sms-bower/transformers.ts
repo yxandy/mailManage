@@ -150,6 +150,16 @@ function getCountryType(country: {
   return "normal";
 }
 
+function isVirtualCountry(country: {
+  title?: string;
+  iso?: string;
+  activate_org_code?: number | string;
+}): boolean {
+  const title = country.title?.toLowerCase() ?? "";
+
+  return getCountryType(country) === "virtual" || title.includes("虚拟");
+}
+
 function getRankLabel(rank?: string): string {
   switch (rank) {
     case "gold":
@@ -220,6 +230,8 @@ export function mapSmsBowerPricesV3(input: {
         countryName: countryNameById.get(countryId) ?? `国家 ${countryId}`,
         countryType: "normal",
         providerId,
+        providerIds: providerId,
+        providerCount: 1,
         price: normalizePrice(numericPrice),
         count,
         rankId: null,
@@ -259,7 +271,7 @@ export function mapSmsBowerFrontendPrices(input: {
     const countryName = country.title?.trim() || `国家 ${countryId}`;
     const countryType = getCountryType(country);
 
-    if (!Number.isFinite(countryId) || !Number.isFinite(countryCode)) {
+    if (!Number.isFinite(countryId) || !Number.isFinite(countryCode) || isVirtualCountry(country)) {
       continue;
     }
 
@@ -268,7 +280,9 @@ export function mapSmsBowerFrontendPrices(input: {
       const count = Number(position.count);
       const rankId = Number(position.rank?.id);
       const rank = position.rank?.description?.trim() ?? "";
-      const agentIds = Array.isArray(position.agent_ids) ? position.agent_ids : [];
+      const providerIds = Array.isArray(position.agent_ids)
+        ? position.agent_ids.map((agentId) => String(agentId).trim()).filter(Boolean)
+        : [];
 
       if (
         !Number.isFinite(numericPrice) ||
@@ -276,39 +290,27 @@ export function mapSmsBowerFrontendPrices(input: {
         count <= 0 ||
         numericPrice < input.minPrice ||
         numericPrice > input.maxPrice ||
-        agentIds.length === 0
+        providerIds.length === 0
       ) {
         continue;
       }
 
-      for (const agentIdValue of agentIds) {
-        const providerId = String(agentIdValue).trim();
-        const agentPrice = Number(position.agent_prices?.[providerId] ?? numericPrice);
-
-        if (
-          !providerId ||
-          !Number.isFinite(agentPrice) ||
-          agentPrice < input.minPrice ||
-          agentPrice > input.maxPrice
-        ) {
-          continue;
-        }
-
-        results.push({
-          id: `${input.serviceId}:${countryId}:${providerId}:${positionKey}:${normalizePrice(agentPrice)}`,
-          serviceId: input.serviceId,
-          serviceCode: service.activate_org_code?.trim() || input.serviceCode,
-          countryId,
-          countryCode,
-          countryName,
-          countryType,
-          providerId,
-          price: normalizePrice(agentPrice),
-          count,
-          rankId: Number.isFinite(rankId) ? rankId : null,
-          rank: getRankLabel(rank),
-        });
-      }
+      results.push({
+        id: `${input.serviceId}:${countryId}:${positionKey}:${normalizePrice(numericPrice)}`,
+        serviceId: input.serviceId,
+        serviceCode: service.activate_org_code?.trim() || input.serviceCode,
+        countryId,
+        countryCode,
+        countryName,
+        countryType,
+        providerId: providerIds[0],
+        providerIds: providerIds.join(","),
+        providerCount: providerIds.length,
+        price: normalizePrice(numericPrice),
+        count,
+        rankId: Number.isFinite(rankId) ? rankId : null,
+        rank: getRankLabel(rank),
+      });
     }
   }
 

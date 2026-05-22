@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentSession } from "@/lib/auth/auth";
-import { purchaseSmsBowerNumber } from "@/lib/sms-bower/client";
+import { SmsBowerNoNumbersError, purchaseSmsBowerNumber } from "@/lib/sms-bower/client";
 
 export const runtime = "nodejs";
 
@@ -17,12 +17,12 @@ export async function POST(request: Request) {
       serviceCode?: string;
       countryCode?: number;
       price?: string;
-      providerId?: string;
+      providerIds?: string;
     };
     const serviceCode = body.serviceCode?.trim() ?? "";
     const countryCode = Number(body.countryCode);
     const price = body.price?.trim() ?? "";
-    const providerId = body.providerId?.trim() ?? "";
+    const providerIds = body.providerIds?.trim() ?? "";
 
     if (!serviceCode) {
       return NextResponse.json({ error: "缺少 serviceCode 参数" }, { status: 400 });
@@ -36,19 +36,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "缺少有效的价格" }, { status: 400 });
     }
 
-    if (!providerId) {
-      return NextResponse.json({ error: "缺少 providerId 参数" }, { status: 400 });
+    if (!providerIds) {
+      return NextResponse.json({ error: "缺少 providerIds 参数" }, { status: 400 });
     }
 
     const result = await purchaseSmsBowerNumber({
       serviceCode,
       countryId: countryCode,
       price,
-      providerId,
+      providerIds,
     });
 
     return NextResponse.json({ result });
   } catch (error) {
+    if (error instanceof SmsBowerNoNumbersError) {
+      return NextResponse.json(
+        { pending: true, error: error.message },
+        { status: 409 },
+      );
+    }
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "SMS Bower 购买失败" },
       { status: 400 },

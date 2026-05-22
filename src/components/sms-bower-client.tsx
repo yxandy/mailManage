@@ -21,8 +21,12 @@ type PricesResponse = {
 
 type PurchaseResponse = {
   result?: SmsBowerPurchaseResult;
+  pending?: boolean;
   error?: string;
 };
+
+const PURCHASE_RETRY_INTERVAL_MS = 2000;
+const PURCHASE_MAX_WAIT_MS = 5 * 60 * 1000;
 
 function normalizeSearchText(value: string): string {
   return value.trim().toLowerCase();
@@ -61,6 +65,12 @@ function getRankClassName(rankId: number | null): string {
   }
 }
 
+function sleep(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, milliseconds);
+  });
+}
+
 export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
   const [services] = useState(initialServices);
   const [selectedService, setSelectedService] = useState("");
@@ -72,6 +82,7 @@ export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
   const [error, setError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [purchasingId, setPurchasingId] = useState("");
+  const [waitingPurchaseId, setWaitingPurchaseId] = useState("");
   const [purchaseResult, setPurchaseResult] = useState<SmsBowerPurchaseResult | null>(null);
 
   const selectedServiceOption =
@@ -142,33 +153,48 @@ export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
     }
 
     setPurchasingId(item.id);
+    setWaitingPurchaseId("");
     setError("");
     setPurchaseResult(null);
 
     try {
-      const response = await fetch("/api/sms-bower/purchase", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          serviceCode: item.serviceCode,
-          countryCode: item.countryCode,
-          price: item.price,
-          providerId: item.providerId,
-        }),
-      });
-      const result = (await response.json()) as PurchaseResponse;
+      const deadline = Date.now() + PURCHASE_MAX_WAIT_MS;
 
-      if (!response.ok || !result.result) {
-        throw new Error(result.error ?? "购买失败");
+      while (Date.now() <= deadline) {
+        const response = await fetch("/api/sms-bower/purchase", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            serviceCode: item.serviceCode,
+            countryCode: item.countryCode,
+            price: item.price,
+            providerIds: item.providerIds,
+          }),
+        });
+        const result = (await response.json()) as PurchaseResponse;
+
+        if (response.status === 409 && result.pending) {
+          setWaitingPurchaseId(item.id);
+          await sleep(PURCHASE_RETRY_INTERVAL_MS);
+          continue;
+        }
+
+        if (!response.ok || !result.result) {
+          throw new Error(result.error ?? "购买失败");
+        }
+
+        setPurchaseResult(result.result);
+        return;
       }
 
-      setPurchaseResult(result.result);
+      throw new Error("5 分钟内没有拿到号码，请稍后再试。");
     } catch (purchaseError) {
       setError(purchaseError instanceof Error ? purchaseError.message : "购买失败");
     } finally {
       setPurchasingId("");
+      setWaitingPurchaseId("");
     }
   }
 
@@ -345,7 +371,9 @@ export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
                         </span>
                       </td>
                       <td className="border-t border-[var(--border)] px-4 py-3">
-                        {item.providerId}
+                        {item.providerCount > 1
+                          ? `${item.providerId} 等 ${item.providerCount} 个`
+                          : item.providerId}
                       </td>
                       <td className="border-t border-[var(--border)] px-4 py-3 font-semibold">
                         {item.price}
@@ -358,7 +386,11 @@ export function SmsBowerClient({ initialServices }: SmsBowerClientProps) {
                           onClick={() => void handlePurchase(item)}
                           disabled={Boolean(purchasingId)}
                         >
-                          {purchasingId === item.id ? "购买中..." : "购买 1 条号码"}
+                          {waitingPurchaseId === item.id
+                            ? "等待号码中..."
+                            : purchasingId === item.id
+                              ? "购买中..."
+                              : "购买 1 条号码"}
                         </button>
                       </td>
                     </tr>
