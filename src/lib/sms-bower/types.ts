@@ -31,6 +31,7 @@ export type SmsBowerPurchaseResult = {
   phoneNumber: string;
   activationCost: string;
   countryCode: number | null;
+  countryPhoneCode: number | null;
   activationTime: string | null;
   activationOperator: string | null;
   canGetAnotherSms: boolean;
@@ -50,6 +51,7 @@ export type SmsBowerActivationRecord = {
   service_name: string;
   country_id: number;
   country_name: string;
+  country_phone_code: number | null;
   provider_id: string | null;
   provider_ids: string;
   activation_cost: string;
@@ -73,6 +75,7 @@ export type SmsBowerActivationView = {
   serviceCode: string;
   countryName: string;
   countryId: number;
+  countryPhoneCode: number | null;
   providerId: string;
   providerIds: string;
   activationCost: string;

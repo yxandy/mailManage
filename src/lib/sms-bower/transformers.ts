@@ -86,6 +86,7 @@ type SmsBowerPurchaseV2Response = {
   phoneNumber?: string | number;
   activationCost?: string | number;
   countryCode?: string | number;
+  countryPhoneCode?: string | number;
   activationTime?: string;
   activationOperator?: string;
   canGetAnotherSms?: boolean;
@@ -344,12 +345,14 @@ export function mapSmsBowerPurchaseV2(
   }
 
   const countryCode = Number(response.countryCode);
+  const countryPhoneCode = Number(response.countryPhoneCode ?? response.countryCode);
 
   return {
     activationId,
     phoneNumber,
     activationCost,
     countryCode: Number.isFinite(countryCode) ? countryCode : null,
+    countryPhoneCode: Number.isFinite(countryPhoneCode) ? countryPhoneCode : null,
     activationTime: response.activationTime ?? null,
     activationOperator: response.activationOperator ?? null,
     canGetAnotherSms: Boolean(response.canGetAnotherSms),

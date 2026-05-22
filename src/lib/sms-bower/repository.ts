@@ -39,6 +39,7 @@ export async function createSmsBowerActivation(input: {
       service_name: input.serviceName,
       country_id: input.priceItem.countryCode,
       country_name: input.priceItem.countryName,
+      country_phone_code: input.purchase.countryPhoneCode,
       provider_id: input.priceItem.providerId || null,
       provider_ids: input.priceItem.providerIds,
       activation_cost: input.purchase.activationCost,

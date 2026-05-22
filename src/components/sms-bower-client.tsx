@@ -9,6 +9,7 @@ import type {
   SmsBowerPurchaseResult,
   SmsBowerServiceOption,
 } from "@/lib/sms-bower/types";
+import { splitPhoneNumberByDialCode } from "@/lib/phone-numbers";
 
 type SmsBowerClientProps = {
   initialServices: SmsBowerServiceOption[];
@@ -123,6 +124,10 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
     }
 
     setActivations(result.items);
+  }
+
+  async function copyText(value: string) {
+    await navigator.clipboard.writeText(value);
   }
 
   async function refreshActivationStatus() {
@@ -396,7 +401,28 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
                   {activations.map((item) => (
                     <tr key={item.id} className="align-middle">
                       <td className="border-t border-[var(--border)] px-4 py-3 font-medium">
-                        {item.phoneNumber}
+                        {(() => {
+                          const phone = splitPhoneNumberByDialCode({
+                            phoneNumber: item.phoneNumber,
+                            dialCode: item.countryPhoneCode,
+                          });
+
+                          return (
+                            <span className="inline-flex max-w-full items-baseline gap-2">
+                              {phone.dialCode ? (
+                                <span className="shrink-0 text-[var(--muted)]">{phone.dialCode}</span>
+                              ) : null}
+                              <button
+                                type="button"
+                                className="min-w-0 truncate text-left font-semibold transition hover:opacity-75"
+                                onClick={() => void copyText(phone.localNumber)}
+                                title="点击复制不含区号的号码"
+                              >
+                                {phone.localNumber}
+                              </button>
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="border-t border-[var(--border)] px-4 py-3">
                         {item.activationCost}

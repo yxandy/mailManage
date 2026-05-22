@@ -20,6 +20,7 @@ import {
   getHeroSmsCancelLockRemainingMs,
   hasHeroSmsActivationReceivedSms,
 } from "@/lib/hero-sms/activations";
+import { splitPhoneNumberByDialCode } from "@/lib/phone-numbers";
 
 type HeroSmsReadonlyClientProps = {
   initialBalance: HeroSmsBalanceView;
@@ -1627,14 +1628,30 @@ export function HeroSmsReadonlyClient({
                     return (
                       <tr key={item.id} className="h-14 border-t border-[var(--border)]">
                         <td className="border-t border-[var(--border)] px-4 py-2 align-middle">
-                          <button
-                            type="button"
-                            className="block max-w-full cursor-pointer truncate text-left font-semibold transition hover:opacity-75"
-                            onClick={() => copyText(item.phoneNumber, `activation-phone-${item.id}`)}
-                            title="点击复制号码"
-                          >
-                            {item.phoneNumber}
-                          </button>
+                          {(() => {
+                            const phone = splitPhoneNumberByDialCode({
+                              phoneNumber: item.phoneNumber,
+                              dialCode: item.countryPhoneCode,
+                            });
+
+                            return (
+                              <span className="inline-flex max-w-full items-baseline gap-2">
+                                {phone.dialCode ? (
+                                  <span className="shrink-0 text-[var(--muted)]">{phone.dialCode}</span>
+                                ) : null}
+                                <button
+                                  type="button"
+                                  className="min-w-0 cursor-pointer truncate text-left font-semibold transition hover:opacity-75"
+                                  onClick={() =>
+                                    copyText(phone.localNumber, `activation-phone-${item.id}`)
+                                  }
+                                  title="点击复制不含区号的号码"
+                                >
+                                  {phone.localNumber}
+                                </button>
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="border-t border-[var(--border)] px-4 py-2 align-middle font-medium">
                           {item.activationCost} {item.currencyLabel}

@@ -113,6 +113,7 @@ create table if not exists public.sms_bower_activations (
   service_name text not null,
   country_id integer not null,
   country_name text not null,
+  country_phone_code integer,
   provider_id text,
   provider_ids text not null,
   activation_cost numeric(12,4) not null,

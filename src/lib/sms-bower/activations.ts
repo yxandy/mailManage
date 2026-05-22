@@ -27,6 +27,7 @@ export function mapSmsBowerActivationRecordToView(
     serviceCode: record.service_code,
     countryName: record.country_name,
     countryId: record.country_id,
+    countryPhoneCode: record.country_phone_code,
     providerId: record.provider_id ?? "",
     providerIds: record.provider_ids,
     activationCost: record.activation_cost,
