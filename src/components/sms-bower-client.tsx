@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   SmsBowerActivationView,
@@ -31,6 +31,8 @@ type ActivationsResponse = {
   items: SmsBowerActivationView[];
   error?: string;
 };
+
+type PurchaseState = "requesting" | "waiting";
 
 const PURCHASE_RETRY_INTERVAL_MS = 2000;
 const PURCHASE_MAX_WAIT_MS = 5 * 60 * 1000;
@@ -92,12 +94,13 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
   const [items, setItems] = useState<SmsBowerPriceResult[]>([]);
   const [error, setError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [purchasingId, setPurchasingId] = useState("");
-  const [waitingPurchaseId, setWaitingPurchaseId] = useState("");
-  const [purchaseResult, setPurchaseResult] = useState<SmsBowerPurchaseResult | null>(null);
+  const [purchaseStates, setPurchaseStates] = useState<Record<string, PurchaseState>>({});
+  const [purchaseResults, setPurchaseResults] = useState<SmsBowerPurchaseResult[]>([]);
   const [activations, setActivations] = useState(initialActivations);
   const [isRefreshingActivations, setIsRefreshingActivations] = useState(false);
   const [activationActionId, setActivationActionId] = useState("");
+  const purchaseAbortControllersRef = useRef(new Map<string, AbortController>());
+  const cancelledPurchaseIdsRef = useRef(new Set<string>());
 
   const selectedServiceOption =
     services.find((service) => service.code === selectedService) ?? null;
@@ -227,7 +230,6 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
 
     setIsSearching(true);
     setError("");
-    setPurchaseResult(null);
 
     try {
       const params = new URLSearchParams({
@@ -253,24 +255,33 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
   }
 
   async function handlePurchase(item: SmsBowerPriceResult) {
-    if (purchasingId) {
+    if (purchaseStates[item.id]) {
       return;
     }
 
-    setPurchasingId(item.id);
-    setWaitingPurchaseId("");
+    const abortController = new AbortController();
+    purchaseAbortControllersRef.current.set(item.id, abortController);
+    cancelledPurchaseIdsRef.current.delete(item.id);
+    setPurchaseStates((current) => ({
+      ...current,
+      [item.id]: "requesting",
+    }));
     setError("");
-    setPurchaseResult(null);
 
     try {
       const deadline = Date.now() + PURCHASE_MAX_WAIT_MS;
 
       while (Date.now() <= deadline) {
+        if (cancelledPurchaseIdsRef.current.has(item.id)) {
+          return;
+        }
+
         const response = await fetch("/api/sms-bower/purchase", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
+          signal: abortController.signal,
           body: JSON.stringify({
             serviceCode: item.serviceCode,
             serviceName: selectedServiceOption?.name ?? item.serviceCode,
@@ -284,7 +295,10 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
         const result = (await response.json()) as PurchaseResponse;
 
         if (response.status === 409 && result.pending) {
-          setWaitingPurchaseId(item.id);
+          setPurchaseStates((current) => ({
+            ...current,
+            [item.id]: "waiting",
+          }));
           await sleep(PURCHASE_RETRY_INTERVAL_MS);
           continue;
         }
@@ -293,18 +307,38 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
           throw new Error(result.error ?? "购买失败");
         }
 
-        setPurchaseResult(result.result);
+        setPurchaseResults((current) => [result.result as SmsBowerPurchaseResult, ...current].slice(0, 5));
         await loadActivations();
         return;
       }
 
       throw new Error("5 分钟内没有拿到号码，请稍后再试。");
     } catch (purchaseError) {
+      if (purchaseError instanceof DOMException && purchaseError.name === "AbortError") {
+        return;
+      }
+
       setError(purchaseError instanceof Error ? purchaseError.message : "购买失败");
     } finally {
-      setPurchasingId("");
-      setWaitingPurchaseId("");
+      purchaseAbortControllersRef.current.delete(item.id);
+      cancelledPurchaseIdsRef.current.delete(item.id);
+      setPurchaseStates((current) => {
+        const next = { ...current };
+        delete next[item.id];
+        return next;
+      });
     }
+  }
+
+  function cancelPendingPurchase(itemId: string) {
+    cancelledPurchaseIdsRef.current.add(itemId);
+    purchaseAbortControllersRef.current.get(itemId)?.abort();
+    purchaseAbortControllersRef.current.delete(itemId);
+    setPurchaseStates((current) => {
+      const next = { ...current };
+      delete next[itemId];
+      return next;
+    });
   }
 
   return (
@@ -520,13 +554,17 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
 
           {error ? <p className="mt-4 text-sm text-[var(--danger)]">{error}</p> : null}
 
-          {purchaseResult ? (
+          {purchaseResults.length > 0 ? (
             <div className="mt-5 rounded-[24px] border border-[var(--border)] bg-white px-5 py-4 text-sm">
-              <p className="font-semibold">购买成功</p>
-              <p className="mt-2 text-[var(--muted)]">
-                activationId：{purchaseResult.activationId}，号码：{purchaseResult.phoneNumber}，
-                成本：{purchaseResult.activationCost}
-              </p>
+              <p className="font-semibold">最近购买成功</p>
+              <div className="mt-2 grid gap-2 text-[var(--muted)]">
+                {purchaseResults.map((item) => (
+                  <p key={item.activationId}>
+                    activationId：{item.activationId}，号码：{item.phoneNumber}，
+                    成本：{item.activationCost}
+                  </p>
+                ))}
+              </div>
             </div>
           ) : null}
         </section>
@@ -584,18 +622,23 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
                       </td>
                       <td className="border-t border-[var(--border)] px-4 py-3">{item.count}</td>
                       <td className="border-t border-[var(--border)] px-4 py-3 text-right">
-                        <button
-                          type="button"
-                          className="rounded-2xl bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
-                          onClick={() => void handlePurchase(item)}
-                          disabled={Boolean(purchasingId)}
-                        >
-                          {waitingPurchaseId === item.id
-                            ? "等待号码中..."
-                            : purchasingId === item.id
-                              ? "购买中..."
-                              : "购买 1 条号码"}
-                        </button>
+                        {purchaseStates[item.id] ? (
+                          <button
+                            type="button"
+                            className="rounded-2xl border border-[var(--danger)] px-4 py-2 text-xs font-semibold text-[var(--danger)]"
+                            onClick={() => cancelPendingPurchase(item.id)}
+                          >
+                            {purchaseStates[item.id] === "waiting" ? "停止等待" : "取消购买"}
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="rounded-2xl bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-[var(--primary-foreground)]"
+                            onClick={() => void handlePurchase(item)}
+                          >
+                            购买 1 条号码
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
