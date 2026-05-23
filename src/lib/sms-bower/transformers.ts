@@ -175,6 +175,30 @@ function getRankLabel(rank?: string): string {
   }
 }
 
+function parseSmsBowerCount(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return Number.NaN;
+  }
+
+  const trimmedValue = value.trim();
+  const numericValue = Number(trimmedValue);
+
+  if (Number.isFinite(numericValue)) {
+    return numericValue;
+  }
+
+  // 官网低库存会显示为“少”，部分接口环境可能返回英文标记。
+  if (["少", "few", "low"].includes(trimmedValue.toLowerCase())) {
+    return 1;
+  }
+
+  return Number.NaN;
+}
+
 export function mapSmsBowerCountries(response: SmsBowerCountryMap): SmsBowerCountryOption[] {
   return Object.entries(response)
     .map(([id, item]) => ({
@@ -209,7 +233,7 @@ export function mapSmsBowerPricesV3(input: {
 
     for (const [providerKey, item] of Object.entries(providers)) {
       const numericPrice = Number(item.price);
-      const count = Number(item.count);
+      const count = parseSmsBowerCount(item.count);
       const providerId = String(item.provider_id ?? providerKey).trim();
 
       if (
@@ -279,7 +303,7 @@ export function mapSmsBowerFrontendPrices(input: {
 
     for (const [positionKey, position] of Object.entries(country.positions ?? {})) {
       const numericPrice = Number(position.price);
-      const count = Number(position.count);
+      const count = parseSmsBowerCount(position.count);
       const rankId = Number(position.rank?.id);
       const rank = position.rank?.description?.trim() ?? "";
       const providerIds = Array.isArray(position.agent_ids)

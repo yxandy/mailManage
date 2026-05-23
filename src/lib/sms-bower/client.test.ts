@@ -190,6 +190,60 @@ test("SMS Bower 前台价格会按官网档位聚合 provider 并过滤虚拟国
   ]);
 });
 
+test("SMS Bower 前台价格会保留低库存文字档位", () => {
+  const result = mapSmsBowerFrontendPrices({
+    serviceId: 247,
+    serviceCode: "dr",
+    minPrice: 0.006,
+    maxPrice: 0.006,
+    response: {
+      services: {
+        "247": {
+          id: 247,
+          title: "OpenAI (ChatGPT)",
+          activate_org_code: "dr",
+          countries: {
+            "232": {
+              id: 232,
+              title: "Singapore",
+              iso: "SG",
+              activate_org_code: "196",
+              positions: {
+                "1|0.006": {
+                  price: 0.006,
+                  count: "少",
+                  rank: { id: 1, description: "gold" },
+                  agent_ids: [2260],
+                  agent_prices: { "2260": 0.006 },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  assert.deepEqual(result, [
+    {
+      id: "247:232:1|0.006:0.0060",
+      serviceId: 247,
+      serviceCode: "dr",
+      countryId: 232,
+      countryCode: 196,
+      countryName: "Singapore",
+      countryType: "normal",
+      providerId: "2260",
+      providerIds: "2260",
+      providerCount: 1,
+      price: "0.0060",
+      count: 1,
+      rankId: 1,
+      rank: "黄金",
+    },
+  ]);
+});
+
 test("SMS Bower V2 购买结果会转换为前端展示字段", () => {
   const result = mapSmsBowerPurchaseV2({
     activationId: 123,
