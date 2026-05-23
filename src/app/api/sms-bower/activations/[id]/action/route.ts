@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentSession } from "@/lib/auth/auth";
+import { canCancelSmsBowerActivation } from "@/lib/sms-bower/activations";
 import { setSmsBowerActivationStatus } from "@/lib/sms-bower/client";
 import {
   getSmsBowerActivationById,
@@ -37,6 +38,13 @@ export async function POST(
     }
 
     if (action === "cancel") {
+      if (!canCancelSmsBowerActivation(record)) {
+        return NextResponse.json(
+          { error: "已收到短信的号码不能取消，请使用完成操作。" },
+          { status: 400 },
+        );
+      }
+
       await setSmsBowerActivationStatus({
         activationId: record.activation_id,
         status: "8",

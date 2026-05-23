@@ -13,4 +13,5 @@ import "../lib/notifications/hero-sms.test.ts";
 import "../lib/notifications/retry.test.ts";
 import "../lib/notifications/sms-bower.test.ts";
 import "../lib/phone-numbers.test.ts";
+import "../lib/sms-bower/activations.test.ts";
 import "../lib/sms-bower/client.test.ts";

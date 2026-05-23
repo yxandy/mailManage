@@ -16,6 +16,17 @@ export function getSmsBowerStatusText(status: string, smsText: string | null): s
   return SMS_BOWER_STATUS_LABELS[status] ?? status;
 }
 
+export function canCancelSmsBowerActivation(record: Pick<
+  SmsBowerActivationRecord,
+  "activation_status" | "sms_code" | "sms_text"
+>): boolean {
+  return (
+    record.activation_status !== "STATUS_OK" &&
+    !record.sms_code?.trim() &&
+    !record.sms_text?.trim()
+  );
+}
+
 export function mapSmsBowerActivationRecordToView(
   record: SmsBowerActivationRecord,
 ): SmsBowerActivationView {
