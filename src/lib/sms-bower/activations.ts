@@ -18,12 +18,15 @@ export function getSmsBowerStatusText(status: string, smsText: string | null): s
 
 export function canCancelSmsBowerActivation(record: Pick<
   SmsBowerActivationRecord,
-  "activation_status" | "sms_code" | "sms_text"
+  "activation_status" | "sms_code" | "sms_text" | "last_sms_code" | "last_sms_text"
 >): boolean {
   return (
     record.activation_status !== "STATUS_OK" &&
+    record.activation_status !== "STATUS_WAIT_RETRY" &&
     !record.sms_code?.trim() &&
-    !record.sms_text?.trim()
+    !record.sms_text?.trim() &&
+    !record.last_sms_code?.trim() &&
+    !record.last_sms_text?.trim()
   );
 }
 
@@ -49,6 +52,8 @@ export function mapSmsBowerActivationRecordToView(
     activationStatusText: getSmsBowerStatusText(record.activation_status, record.sms_text),
     smsCode: record.sms_code,
     smsText: record.sms_text,
+    lastSmsCode: record.last_sms_code,
+    lastSmsText: record.last_sms_text,
     isActive: record.is_active,
     createdAt: record.created_at,
   };

@@ -69,6 +69,8 @@ export async function POST(
       });
       await updateSmsBowerActivationByActivationId(record.activation_id, {
         activation_status: "STATUS_WAIT_RETRY",
+        last_sms_code: record.sms_code,
+        last_sms_text: record.sms_text,
         sms_code: null,
         sms_text: null,
         is_active: true,

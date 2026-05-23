@@ -123,6 +123,8 @@ create table if not exists public.sms_bower_activations (
   activation_status text not null default 'STATUS_WAIT_CODE',
   sms_code text,
   sms_text text,
+  last_sms_code text,
+  last_sms_text text,
   is_active boolean not null default true,
   raw_payload jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),

@@ -85,6 +85,17 @@ function getSmsBowerSmsDisplay(item: SmsBowerActivationView): string {
   return item.smsCode?.trim() || item.smsText?.trim() || "等待接收短信";
 }
 
+function hasSmsBowerReceivedSms(item: SmsBowerActivationView): boolean {
+  return Boolean(
+    item.smsCode?.trim() ||
+      item.smsText?.trim() ||
+      item.lastSmsCode?.trim() ||
+      item.lastSmsText?.trim() ||
+      item.activationStatus === "STATUS_OK" ||
+      item.activationStatus === "STATUS_WAIT_RETRY",
+  );
+}
+
 export function SmsBowerClient({ initialServices, initialActivations }: SmsBowerClientProps) {
   const [services] = useState(initialServices);
   const [selectedService, setSelectedService] = useState("");
@@ -436,7 +447,7 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
                       </td>
                       <td className="border-t border-[var(--border)] px-4 py-3 text-right">
                         <div className="flex min-h-8 items-center justify-end gap-2 whitespace-nowrap">
-                          {item.smsCode || item.smsText ? (
+                          {hasSmsBowerReceivedSms(item) ? (
                             <>
                               {item.canGetAnotherSms ? (
                                 <button

@@ -62,6 +62,8 @@ export type SmsBowerActivationRecord = {
   activation_status: string;
   sms_code: string | null;
   sms_text: string | null;
+  last_sms_code: string | null;
+  last_sms_text: string | null;
   is_active: boolean;
   raw_payload: Record<string, unknown>;
   created_at: string;
@@ -87,6 +89,8 @@ export type SmsBowerActivationView = {
   activationStatusText: string;
   smsCode: string | null;
   smsText: string | null;
+  lastSmsCode: string | null;
+  lastSmsText: string | null;
   isActive: boolean;
   createdAt: string;
 };

@@ -127,6 +127,10 @@ test("sms_bower_activations 表包含活动号码和短信字段", () => {
   );
   assert.match(
     schemaSql,
+    /create table if not exists public\.sms_bower_activations[\s\S]*\n\s*last_sms_code\s+text,?/i,
+  );
+  assert.match(
+    schemaSql,
     /create index if not exists idx_sms_bower_activations_is_active\s+on public\.sms_bower_activations \(is_active\);/i,
   );
 });
