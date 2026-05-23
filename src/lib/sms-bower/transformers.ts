@@ -199,6 +199,10 @@ function parseSmsBowerCount(value: unknown): number {
   return Number.NaN;
 }
 
+function formatSmsBowerCountLabel(count: number): string {
+  return count === 1 ? "少" : String(count);
+}
+
 export function mapSmsBowerCountries(response: SmsBowerCountryMap): SmsBowerCountryOption[] {
   return Object.entries(response)
     .map(([id, item]) => ({
@@ -260,6 +264,7 @@ export function mapSmsBowerPricesV3(input: {
         providerCount: 1,
         price: normalizePrice(numericPrice),
         count,
+        countLabel: formatSmsBowerCountLabel(count),
         rankId: null,
         rank: "未标注",
       });
@@ -303,12 +308,14 @@ export function mapSmsBowerFrontendPrices(input: {
 
     for (const [positionKey, position] of Object.entries(country.positions ?? {})) {
       const numericPrice = Number(position.price);
-      const count = parseSmsBowerCount(position.count);
       const rankId = Number(position.rank?.id);
       const rank = position.rank?.description?.trim() ?? "";
       const providerIds = Array.isArray(position.agent_ids)
         ? position.agent_ids.map((agentId) => String(agentId).trim()).filter(Boolean)
         : [];
+      const parsedCount = parseSmsBowerCount(position.count);
+      const hasLowStockAgents = parsedCount === 0 && providerIds.length > 0;
+      const count = hasLowStockAgents ? 1 : parsedCount;
 
       if (
         !Number.isFinite(numericPrice) ||
@@ -334,6 +341,7 @@ export function mapSmsBowerFrontendPrices(input: {
         providerCount: providerIds.length,
         price: normalizePrice(numericPrice),
         count,
+        countLabel: hasLowStockAgents ? "少" : formatSmsBowerCountLabel(count),
         rankId: Number.isFinite(rankId) ? rankId : null,
         rank: getRankLabel(rank),
       });

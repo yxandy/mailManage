@@ -646,7 +646,9 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
                       <td className="border-t border-[var(--border)] px-4 py-3 font-semibold">
                         {item.price}
                       </td>
-                      <td className="border-t border-[var(--border)] px-4 py-3">{item.count}</td>
+                      <td className="border-t border-[var(--border)] px-4 py-3">
+                        {item.countLabel}
+                      </td>
                       <td className="border-t border-[var(--border)] px-4 py-3 text-right">
                         {purchaseStates[item.id] ? (
                           <button

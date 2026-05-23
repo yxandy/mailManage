@@ -22,6 +22,7 @@ export type SmsBowerPriceResult = {
   providerCount: number;
   price: string;
   count: number;
+  countLabel: string;
   rankId: number | null;
   rank: string;
 };

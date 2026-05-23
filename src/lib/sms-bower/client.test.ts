@@ -92,6 +92,7 @@ test("SMS Bower V3 价格会筛出指定服务与价格区间的国家", () => {
       providerCount: 1,
       price: "0.0200",
       count: 8,
+      countLabel: "8",
       rankId: null,
       rank: "未标注",
     },
@@ -108,6 +109,7 @@ test("SMS Bower V3 价格会筛出指定服务与价格区间的国家", () => {
       providerCount: 1,
       price: "0.0450",
       count: 3,
+      countLabel: "3",
       rankId: null,
       rank: "未标注",
     },
@@ -184,13 +186,14 @@ test("SMS Bower 前台价格会按官网档位聚合 provider 并过滤虚拟国
       providerCount: 2,
       price: "0.0200",
       count: 5,
+      countLabel: "5",
       rankId: 1,
       rank: "黄金",
     },
   ]);
 });
 
-test("SMS Bower 前台价格会保留低库存文字档位", () => {
+test("SMS Bower 前台价格会保留官网显示为少的低库存档位", () => {
   const result = mapSmsBowerFrontendPrices({
     serviceId: 247,
     serviceCode: "dr",
@@ -211,7 +214,7 @@ test("SMS Bower 前台价格会保留低库存文字档位", () => {
               positions: {
                 "1|0.006": {
                   price: 0.006,
-                  count: "少",
+                  count: 0,
                   rank: { id: 1, description: "gold" },
                   agent_ids: [2260],
                   agent_prices: { "2260": 0.006 },
@@ -238,6 +241,7 @@ test("SMS Bower 前台价格会保留低库存文字档位", () => {
       providerCount: 1,
       price: "0.0060",
       count: 1,
+      countLabel: "少",
       rankId: 1,
       rank: "黄金",
     },
