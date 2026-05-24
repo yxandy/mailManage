@@ -400,12 +400,13 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
               <table className="min-w-full table-fixed border-separate border-spacing-0 text-sm">
                 <thead className="bg-[var(--panel-strong)] text-left text-[var(--muted)]">
                   <tr>
-                    <th className="w-[22%] px-4 py-3 font-medium">号码</th>
-                    <th className="w-[16%] px-4 py-3 font-medium">成本</th>
-                    <th className="w-[18%] px-4 py-3 font-medium">国家</th>
-                    <th className="w-[16%] px-4 py-3 font-medium">状态</th>
-                    <th className="w-[13%] px-4 py-3 font-medium">最新短信</th>
-                    <th className="w-[15%] px-4 py-3 text-right font-medium">操作</th>
+                    <th className="w-[20%] px-4 py-3 font-medium">号码</th>
+                    <th className="w-[12%] px-4 py-3 font-medium">成本</th>
+                    <th className="w-[16%] px-4 py-3 font-medium">国家</th>
+                    <th className="w-[14%] px-4 py-3 font-medium">状态</th>
+                    <th className="w-[13%] px-4 py-3 font-medium">可再次收短信</th>
+                    <th className="w-[12%] px-4 py-3 font-medium">最新短信</th>
+                    <th className="w-[13%] px-4 py-3 text-right font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -441,6 +442,9 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
                       </td>
                       <td className="border-t border-[var(--border)] px-4 py-3 font-medium">
                         {item.activationStatusText}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3">
+                        {item.canGetAnotherSms ? "是" : "否"}
                       </td>
                       <td className="border-t border-[var(--border)] px-4 py-3 text-[var(--muted)]">
                         {getSmsBowerSmsDisplay(item)}
