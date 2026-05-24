@@ -135,6 +135,27 @@ test("sms_bower_activations 表包含活动号码和短信字段", () => {
   );
 });
 
+test("sms_bower_favorites 表包含服务价格组合和等待策略字段", () => {
+  const schemaSql = readFileSync(schemaFilePath, "utf8");
+
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.sms_bower_favorites[\s\S]*\n\s*service_id\s+integer\s+not null,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.sms_bower_favorites[\s\S]*\n\s*min_price\s+numeric\(12,4\)\s+not null,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.sms_bower_favorites[\s\S]*\n\s*early_retry_minutes\s+integer\s+not null\s+default 1,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create unique index if not exists idx_sms_bower_favorites_unique_live_combo[\s\S]*where deleted_at is null;/i,
+  );
+});
+
 test("notification_events 表包含提醒队列核心字段与唯一去重键", () => {
   const schemaSql = readFileSync(schemaFilePath, "utf8");
 

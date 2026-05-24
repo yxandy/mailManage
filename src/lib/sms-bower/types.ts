@@ -95,6 +95,35 @@ export type SmsBowerActivationView = {
   createdAt: string;
 };
 
+export type SmsBowerFavoriteRecord = {
+  id: string;
+  service_id: number;
+  service_code: string;
+  service_name: string;
+  min_price: string;
+  max_price: string;
+  early_retry_minutes: number;
+  early_retry_interval_seconds: number;
+  later_retry_interval_seconds: number;
+  max_wait_minutes: number;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SmsBowerFavoriteView = {
+  id: string;
+  serviceId: number;
+  serviceCode: string;
+  serviceName: string;
+  minPrice: string;
+  maxPrice: string;
+  earlyRetryMinutes: number;
+  earlyRetryIntervalSeconds: number;
+  laterRetryIntervalSeconds: number;
+  maxWaitMinutes: number;
+};
+
 export type SmsBowerWebhookPayload = {
   activationId?: string | number;
   service?: string;

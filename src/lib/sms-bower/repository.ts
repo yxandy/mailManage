@@ -2,6 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import type {
   SmsBowerActivationRecord,
+  SmsBowerFavoriteRecord,
   SmsBowerPriceResult,
   SmsBowerPurchaseResult,
 } from "./types";
@@ -133,5 +134,80 @@ export async function updateSmsBowerActivationByActivationId(
 
   if (error) {
     throw new Error(`更新 SMS Bower 活动记录失败：${error.message}`);
+  }
+}
+
+export async function listSmsBowerFavorites(): Promise<SmsBowerFavoriteRecord[]> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("sms_bower_favorites")
+    .select("*")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new Error(`查询 SMS Bower 收藏失败：${error.message}`);
+  }
+
+  return (data ?? []) as SmsBowerFavoriteRecord[];
+}
+
+export async function createSmsBowerFavorite(input: {
+  serviceId: number;
+  serviceCode: string;
+  serviceName: string;
+  minPrice: string;
+  maxPrice: string;
+  earlyRetryMinutes: number;
+  earlyRetryIntervalSeconds: number;
+  laterRetryIntervalSeconds: number;
+  maxWaitMinutes: number;
+}): Promise<void> {
+  const supabase = createSupabaseServerClient();
+  const row = {
+    service_id: input.serviceId,
+    service_code: input.serviceCode,
+    service_name: input.serviceName,
+    min_price: input.minPrice,
+    max_price: input.maxPrice,
+    early_retry_minutes: input.earlyRetryMinutes,
+    early_retry_interval_seconds: input.earlyRetryIntervalSeconds,
+    later_retry_interval_seconds: input.laterRetryIntervalSeconds,
+    max_wait_minutes: input.maxWaitMinutes,
+  };
+  const { data: existingData, error: existingError } = await supabase
+    .from("sms_bower_favorites")
+    .select("id")
+    .match(row)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(`查询 SMS Bower 收藏失败：${existingError.message}`);
+  }
+
+  if (existingData) {
+    return;
+  }
+
+  const { error } = await supabase.from("sms_bower_favorites").insert(row);
+
+  if (error) {
+    throw new Error(`写入 SMS Bower 收藏失败：${error.message}`);
+  }
+}
+
+export async function softDeleteSmsBowerFavorite(id: string): Promise<void> {
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .from("sms_bower_favorites")
+    .update({
+      deleted_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new Error(`删除 SMS Bower 收藏失败：${error.message}`);
   }
 }

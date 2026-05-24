@@ -1,4 +1,9 @@
-import type { SmsBowerActivationRecord, SmsBowerActivationView } from "./types";
+import type {
+  SmsBowerActivationRecord,
+  SmsBowerActivationView,
+  SmsBowerFavoriteRecord,
+  SmsBowerFavoriteView,
+} from "./types";
 
 const SMS_BOWER_STATUS_LABELS: Record<string, string> = {
   STATUS_WAIT_CODE: "等待接收短信",
@@ -56,5 +61,22 @@ export function mapSmsBowerActivationRecordToView(
     lastSmsText: record.last_sms_text,
     isActive: record.is_active,
     createdAt: record.created_at,
+  };
+}
+
+export function mapSmsBowerFavoriteRecordToView(
+  record: SmsBowerFavoriteRecord,
+): SmsBowerFavoriteView {
+  return {
+    id: record.id,
+    serviceId: record.service_id,
+    serviceCode: record.service_code,
+    serviceName: record.service_name,
+    minPrice: record.min_price,
+    maxPrice: record.max_price,
+    earlyRetryMinutes: record.early_retry_minutes,
+    earlyRetryIntervalSeconds: record.early_retry_interval_seconds,
+    laterRetryIntervalSeconds: record.later_retry_interval_seconds,
+    maxWaitMinutes: record.max_wait_minutes,
   };
 }

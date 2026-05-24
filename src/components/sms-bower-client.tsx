@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   SmsBowerActivationView,
   SmsBowerCountryOption,
+  SmsBowerFavoriteView,
   SmsBowerPriceResult,
   SmsBowerPurchaseResult,
   SmsBowerServiceOption,
@@ -15,6 +16,7 @@ type SmsBowerClientProps = {
   initialServices: SmsBowerServiceOption[];
   initialCountries: SmsBowerCountryOption[];
   initialActivations: SmsBowerActivationView[];
+  initialFavorites: SmsBowerFavoriteView[];
 };
 
 type PricesResponse = {
@@ -33,10 +35,17 @@ type ActivationsResponse = {
   error?: string;
 };
 
+type FavoritesResponse = {
+  items: SmsBowerFavoriteView[];
+  error?: string;
+};
+
 type PurchaseState = "requesting" | "waiting";
 
-const PURCHASE_RETRY_INTERVAL_MS = 2000;
-const PURCHASE_MAX_WAIT_MS = 5 * 60 * 1000;
+const DEFAULT_EARLY_RETRY_MINUTES = 1;
+const DEFAULT_EARLY_RETRY_INTERVAL_SECONDS = 2;
+const DEFAULT_LATER_RETRY_INTERVAL_SECONDS = 8;
+const DEFAULT_MAX_WAIT_MINUTES = 10;
 
 function normalizeSearchText(value: string): string {
   return value.trim().toLowerCase();
@@ -96,16 +105,51 @@ function hasSmsBowerReceivedSms(item: SmsBowerActivationView): boolean {
   );
 }
 
-export function SmsBowerClient({ initialServices, initialActivations }: SmsBowerClientProps) {
+function parsePositiveNumber(value: string): number {
+  const numericValue = Number(value);
+
+  return Number.isFinite(numericValue) ? numericValue : Number.NaN;
+}
+
+function getRetryIntervalMs(input: {
+  startedAt: number;
+  earlyRetryMinutes: string;
+  earlyRetryIntervalSeconds: string;
+  laterRetryIntervalSeconds: string;
+}): number {
+  const elapsedMs = Date.now() - input.startedAt;
+  const earlyRetryMs = parsePositiveNumber(input.earlyRetryMinutes) * 60 * 1000;
+  const earlyIntervalMs = parsePositiveNumber(input.earlyRetryIntervalSeconds) * 1000;
+  const laterIntervalMs = parsePositiveNumber(input.laterRetryIntervalSeconds) * 1000;
+
+  return elapsedMs <= earlyRetryMs ? earlyIntervalMs : laterIntervalMs;
+}
+
+export function SmsBowerClient({
+  initialServices,
+  initialActivations,
+  initialFavorites,
+}: SmsBowerClientProps) {
   const [services] = useState(initialServices);
   const [selectedService, setSelectedService] = useState("");
   const [serviceKeyword, setServiceKeyword] = useState("");
   const [isServicePickerOpen, setIsServicePickerOpen] = useState(false);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  const [earlyRetryMinutes, setEarlyRetryMinutes] = useState(String(DEFAULT_EARLY_RETRY_MINUTES));
+  const [earlyRetryIntervalSeconds, setEarlyRetryIntervalSeconds] = useState(
+    String(DEFAULT_EARLY_RETRY_INTERVAL_SECONDS),
+  );
+  const [laterRetryIntervalSeconds, setLaterRetryIntervalSeconds] = useState(
+    String(DEFAULT_LATER_RETRY_INTERVAL_SECONDS),
+  );
+  const [maxWaitMinutes, setMaxWaitMinutes] = useState(String(DEFAULT_MAX_WAIT_MINUTES));
   const [items, setItems] = useState<SmsBowerPriceResult[]>([]);
   const [error, setError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [favorites, setFavorites] = useState(initialFavorites);
+  const [isSavingFavorite, setIsSavingFavorite] = useState(false);
+  const [deletingFavoriteId, setDeletingFavoriteId] = useState("");
   const [purchaseStates, setPurchaseStates] = useState<Record<string, PurchaseState>>({});
   const [purchaseResults, setPurchaseResults] = useState<SmsBowerPurchaseResult[]>([]);
   const [activations, setActivations] = useState(initialActivations);
@@ -123,6 +167,45 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
   const shouldPollActivations = activations.some((item) =>
     ["STATUS_WAIT_CODE", "STATUS_WAIT_RETRY"].includes(item.activationStatus),
   );
+
+  function validatePurchaseStrategy(): boolean {
+    const earlyMinutes = parsePositiveNumber(earlyRetryMinutes);
+    const earlyInterval = parsePositiveNumber(earlyRetryIntervalSeconds);
+    const laterInterval = parsePositiveNumber(laterRetryIntervalSeconds);
+    const maxWait = parsePositiveNumber(maxWaitMinutes);
+
+    if (
+      !Number.isFinite(earlyMinutes) ||
+      earlyMinutes < 0 ||
+      !Number.isFinite(earlyInterval) ||
+      earlyInterval <= 0 ||
+      !Number.isFinite(laterInterval) ||
+      laterInterval <= 0 ||
+      !Number.isFinite(maxWait) ||
+      maxWait <= 0
+    ) {
+      setError("请输入有效的购买等待策略。");
+      return false;
+    }
+
+    if (earlyMinutes > maxWait) {
+      setError("前期时长不能超过最长等待。");
+      return false;
+    }
+
+    return true;
+  }
+
+  function applyFavorite(favorite: SmsBowerFavoriteView) {
+    setSelectedService(favorite.serviceCode);
+    setMinPrice(favorite.minPrice);
+    setMaxPrice(favorite.maxPrice);
+    setEarlyRetryMinutes(String(favorite.earlyRetryMinutes));
+    setEarlyRetryIntervalSeconds(String(favorite.earlyRetryIntervalSeconds));
+    setLaterRetryIntervalSeconds(String(favorite.laterRetryIntervalSeconds));
+    setMaxWaitMinutes(String(favorite.maxWaitMinutes));
+    setError("");
+  }
 
   async function loadActivations() {
     const response = await fetch("/api/sms-bower/activations", {
@@ -164,6 +247,93 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
       setError(refreshError instanceof Error ? refreshError.message : "刷新短信状态失败");
     } finally {
       setIsRefreshingActivations(false);
+    }
+  }
+
+  async function handleSaveFavorite() {
+    if (isSavingFavorite) {
+      return;
+    }
+
+    if (!selectedServiceOption?.id) {
+      setError("请先选择服务。");
+      return;
+    }
+
+    const min = Number(minPrice);
+    const max = Number(maxPrice);
+
+    if (!Number.isFinite(min) || min < 0 || !Number.isFinite(max) || max <= 0 || max < min) {
+      setError("请输入有效的价格区间。");
+      return;
+    }
+
+    if (!validatePurchaseStrategy()) {
+      return;
+    }
+
+    setIsSavingFavorite(true);
+    setError("");
+
+    try {
+      const response = await fetch("/api/sms-bower/favorites", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          serviceId: selectedServiceOption.id,
+          serviceCode: selectedServiceOption.code,
+          serviceName: selectedServiceOption.name,
+          minPrice,
+          maxPrice,
+          earlyRetryMinutes: Number(earlyRetryMinutes),
+          earlyRetryIntervalSeconds: Number(earlyRetryIntervalSeconds),
+          laterRetryIntervalSeconds: Number(laterRetryIntervalSeconds),
+          maxWaitMinutes: Number(maxWaitMinutes),
+        }),
+      });
+      const result = (await response.json()) as FavoritesResponse;
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "收藏失败");
+      }
+
+      setFavorites(result.items);
+    } catch (favoriteError) {
+      setError(favoriteError instanceof Error ? favoriteError.message : "收藏失败");
+    } finally {
+      setIsSavingFavorite(false);
+    }
+  }
+
+  async function handleDeleteFavorite(id: string) {
+    if (deletingFavoriteId) {
+      return;
+    }
+
+    setDeletingFavoriteId(id);
+    setError("");
+
+    try {
+      const response = await fetch("/api/sms-bower/favorites", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id }),
+      });
+      const result = (await response.json()) as FavoritesResponse;
+
+      if (!response.ok) {
+        throw new Error(result.error ?? "删除收藏失败");
+      }
+
+      setFavorites(result.items);
+    } catch (favoriteError) {
+      setError(favoriteError instanceof Error ? favoriteError.message : "删除收藏失败");
+    } finally {
+      setDeletingFavoriteId("");
     }
   }
 
@@ -244,6 +414,10 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
       return;
     }
 
+    if (!validatePurchaseStrategy()) {
+      return;
+    }
+
     setIsSearching(true);
     setError("");
 
@@ -285,7 +459,12 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
     setError("");
 
     try {
-      const deadline = Date.now() + PURCHASE_MAX_WAIT_MS;
+      if (!validatePurchaseStrategy()) {
+        return;
+      }
+
+      const startedAt = Date.now();
+      const deadline = startedAt + Number(maxWaitMinutes) * 60 * 1000;
       let shouldNotifyOnSuccess = false;
 
       while (Date.now() <= deadline) {
@@ -318,7 +497,14 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
             ...current,
             [item.id]: "waiting",
           }));
-          await sleep(PURCHASE_RETRY_INTERVAL_MS);
+          await sleep(
+            getRetryIntervalMs({
+              startedAt,
+              earlyRetryMinutes,
+              earlyRetryIntervalSeconds,
+              laterRetryIntervalSeconds,
+            }),
+          );
           continue;
         }
 
@@ -331,7 +517,7 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
         return;
       }
 
-      throw new Error("5 分钟内没有拿到号码，请稍后再试。");
+      throw new Error(`${maxWaitMinutes} 分钟内没有拿到号码，请稍后再试。`);
     } catch (purchaseError) {
       if (purchaseError instanceof DOMException && purchaseError.name === "AbortError") {
         return;
@@ -493,6 +679,45 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
         </section>
 
         <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
+          {favorites.length > 0 ? (
+            <div className="mb-5 rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-[var(--muted)]">收藏</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    点击收藏会填入服务、价格区间和购买等待策略。
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                {favorites.map((favorite) => (
+                  <div
+                    key={favorite.id}
+                    className="inline-flex max-w-full items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm"
+                  >
+                    <button
+                      type="button"
+                      className="max-w-[280px] truncate text-left"
+                      onClick={() => applyFavorite(favorite)}
+                    >
+                      {favorite.serviceName} / {favorite.minPrice}-{favorite.maxPrice} / 前
+                      {favorite.earlyRetryMinutes}分每{favorite.earlyRetryIntervalSeconds}秒
+                    </button>
+                    <button
+                      type="button"
+                      className="text-[var(--muted)] transition hover:text-[var(--danger)] disabled:opacity-60"
+                      onClick={() => void handleDeleteFavorite(favorite.id)}
+                      disabled={deletingFavoriteId === favorite.id}
+                      aria-label="删除收藏"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(130px,0.45fr)_minmax(130px,0.45fr)_auto]">
             <div
               className="grid gap-2 text-sm"
@@ -589,6 +814,51 @@ export function SmsBowerClient({ initialServices, initialActivations }: SmsBower
                 disabled={isSearching}
               >
                 {isSearching ? "查询中..." : "查询国家"}
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(120px,0.6fr)_minmax(120px,0.6fr)_minmax(120px,0.6fr)_minmax(120px,0.6fr)_auto]">
+            <label className="grid gap-2 text-sm">
+              <span className="text-[var(--muted)]">前期时长（分钟）</span>
+              <input
+                value={earlyRetryMinutes}
+                onChange={(event) => setEarlyRetryMinutes(event.target.value)}
+                className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+              />
+            </label>
+            <label className="grid gap-2 text-sm">
+              <span className="text-[var(--muted)]">前期间隔（秒）</span>
+              <input
+                value={earlyRetryIntervalSeconds}
+                onChange={(event) => setEarlyRetryIntervalSeconds(event.target.value)}
+                className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+              />
+            </label>
+            <label className="grid gap-2 text-sm">
+              <span className="text-[var(--muted)]">后期间隔（秒）</span>
+              <input
+                value={laterRetryIntervalSeconds}
+                onChange={(event) => setLaterRetryIntervalSeconds(event.target.value)}
+                className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+              />
+            </label>
+            <label className="grid gap-2 text-sm">
+              <span className="text-[var(--muted)]">最长等待（分钟）</span>
+              <input
+                value={maxWaitMinutes}
+                onChange={(event) => setMaxWaitMinutes(event.target.value)}
+                className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+              />
+            </label>
+            <div className="grid items-end">
+              <button
+                type="button"
+                className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm font-semibold whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-70"
+                onClick={() => void handleSaveFavorite()}
+                disabled={isSavingFavorite}
+              >
+                {isSavingFavorite ? "收藏中..." : "收藏当前组合"}
               </button>
             </div>
           </div>
