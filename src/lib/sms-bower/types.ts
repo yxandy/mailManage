@@ -102,6 +102,7 @@ export type SmsBowerFavoriteRecord = {
   service_name: string;
   min_price: string;
   max_price: string;
+  rank_ids: number[];
   early_retry_minutes: number;
   early_retry_interval_seconds: number;
   later_retry_interval_seconds: number;
@@ -118,6 +119,7 @@ export type SmsBowerFavoriteView = {
   serviceName: string;
   minPrice: string;
   maxPrice: string;
+  rankIds: number[];
   earlyRetryMinutes: number;
   earlyRetryIntervalSeconds: number;
   laterRetryIntervalSeconds: number;

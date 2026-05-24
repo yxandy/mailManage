@@ -74,6 +74,7 @@ export function mapSmsBowerFavoriteRecordToView(
     serviceName: record.service_name,
     minPrice: record.min_price,
     maxPrice: record.max_price,
+    rankIds: record.rank_ids ?? [1, 2, 3],
     earlyRetryMinutes: record.early_retry_minutes,
     earlyRetryIntervalSeconds: record.early_retry_interval_seconds,
     laterRetryIntervalSeconds: record.later_retry_interval_seconds,

@@ -26,6 +26,20 @@ function normalizePositiveInteger(value: number | undefined): number {
   return Number.isFinite(numericValue) ? Math.floor(numericValue) : Number.NaN;
 }
 
+function normalizeRankIds(value: unknown): number[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(
+      value
+        .map((item) => Number(item))
+        .filter((item) => [1, 2, 3].includes(item)),
+    ),
+  ).sort((a, b) => a - b);
+}
+
 export async function GET() {
   const session = await getCurrentSession();
 
@@ -61,6 +75,7 @@ export async function POST(request: Request) {
       serviceName?: string;
       minPrice?: string;
       maxPrice?: string;
+      rankIds?: unknown;
       earlyRetryMinutes?: number;
       earlyRetryIntervalSeconds?: number;
       laterRetryIntervalSeconds?: number;
@@ -71,6 +86,7 @@ export async function POST(request: Request) {
     const serviceName = body.serviceName?.trim() ?? serviceCode;
     const minPrice = normalizePriceInput(body.minPrice);
     const maxPrice = normalizePriceInput(body.maxPrice);
+    const rankIds = normalizeRankIds(body.rankIds);
     const earlyRetryMinutes = normalizePositiveInteger(body.earlyRetryMinutes);
     const earlyRetryIntervalSeconds = normalizePositiveInteger(body.earlyRetryIntervalSeconds);
     const laterRetryIntervalSeconds = normalizePositiveInteger(body.laterRetryIntervalSeconds);
@@ -86,6 +102,10 @@ export async function POST(request: Request) {
 
     if (!minPrice || !maxPrice || Number(maxPrice) < Number(minPrice)) {
       return NextResponse.json({ error: "缺少有效的价格区间" }, { status: 400 });
+    }
+
+    if (rankIds.length === 0) {
+      return NextResponse.json({ error: "请至少选择一个职级" }, { status: 400 });
     }
 
     if (
@@ -107,6 +127,7 @@ export async function POST(request: Request) {
       serviceName,
       minPrice,
       maxPrice,
+      rankIds,
       earlyRetryMinutes,
       earlyRetryIntervalSeconds,
       laterRetryIntervalSeconds,

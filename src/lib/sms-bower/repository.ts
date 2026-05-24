@@ -158,6 +158,7 @@ export async function createSmsBowerFavorite(input: {
   serviceName: string;
   minPrice: string;
   maxPrice: string;
+  rankIds: number[];
   earlyRetryMinutes: number;
   earlyRetryIntervalSeconds: number;
   laterRetryIntervalSeconds: number;
@@ -170,6 +171,7 @@ export async function createSmsBowerFavorite(input: {
     service_name: input.serviceName,
     min_price: input.minPrice,
     max_price: input.maxPrice,
+    rank_ids: input.rankIds,
     early_retry_minutes: input.earlyRetryMinutes,
     early_retry_interval_seconds: input.earlyRetryIntervalSeconds,
     later_retry_interval_seconds: input.laterRetryIntervalSeconds,
@@ -177,16 +179,35 @@ export async function createSmsBowerFavorite(input: {
   };
   const { data: existingData, error: existingError } = await supabase
     .from("sms_bower_favorites")
-    .select("id")
-    .match(row)
+    .select("id, rank_ids")
+    .match({
+      service_id: row.service_id,
+      service_code: row.service_code,
+      service_name: row.service_name,
+      min_price: row.min_price,
+      max_price: row.max_price,
+      early_retry_minutes: row.early_retry_minutes,
+      early_retry_interval_seconds: row.early_retry_interval_seconds,
+      later_retry_interval_seconds: row.later_retry_interval_seconds,
+      max_wait_minutes: row.max_wait_minutes,
+    })
     .is("deleted_at", null)
-    .maybeSingle();
+    .limit(20);
 
   if (existingError) {
     throw new Error(`查询 SMS Bower 收藏失败：${existingError.message}`);
   }
 
-  if (existingData) {
+  if (
+    (existingData ?? []).some((item) => {
+      const existingRankIds = Array.isArray(item.rank_ids) ? item.rank_ids : [];
+
+      return (
+        existingRankIds.length === row.rank_ids.length &&
+        existingRankIds.every((rankId, index) => rankId === row.rank_ids[index])
+      );
+    })
+  ) {
     return;
   }
 

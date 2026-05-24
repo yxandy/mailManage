@@ -138,6 +138,7 @@ create table if not exists public.sms_bower_favorites (
   service_name text not null,
   min_price numeric(12,4) not null,
   max_price numeric(12,4) not null,
+  rank_ids integer[] not null default array[1, 2, 3],
   early_retry_minutes integer not null default 1,
   early_retry_interval_seconds integer not null default 2,
   later_retry_interval_seconds integer not null default 8,
@@ -147,6 +148,10 @@ create table if not exists public.sms_bower_favorites (
   updated_at timestamptz not null default timezone('utc', now()),
   constraint sms_bower_favorites_price_check check (
     min_price >= 0 and max_price > 0 and max_price >= min_price
+  ),
+  constraint sms_bower_favorites_rank_ids_check check (
+    cardinality(rank_ids) > 0
+    and rank_ids <@ array[1, 2, 3]
   ),
   constraint sms_bower_favorites_retry_check check (
     early_retry_minutes >= 0
@@ -253,6 +258,7 @@ create unique index if not exists idx_sms_bower_favorites_unique_live_combo
     service_id,
     min_price,
     max_price,
+    rank_ids,
     early_retry_minutes,
     early_retry_interval_seconds,
     later_retry_interval_seconds,

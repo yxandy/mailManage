@@ -46,6 +46,12 @@ const DEFAULT_EARLY_RETRY_MINUTES = 1;
 const DEFAULT_EARLY_RETRY_INTERVAL_SECONDS = 2;
 const DEFAULT_LATER_RETRY_INTERVAL_SECONDS = 8;
 const DEFAULT_MAX_WAIT_MINUTES = 10;
+const SMS_BOWER_RANK_OPTIONS = [
+  { id: 1, label: "黄金" },
+  { id: 2, label: "白银" },
+  { id: 3, label: "青铜" },
+] as const;
+const DEFAULT_SELECTED_RANK_IDS = SMS_BOWER_RANK_OPTIONS.map((item) => item.id);
 
 function normalizeSearchText(value: string): string {
   return value.trim().toLowerCase();
@@ -82,6 +88,12 @@ function getRankClassName(rankId: number | null): string {
     default:
       return "border-[var(--border)] bg-[var(--panel-strong)] text-[var(--muted)]";
   }
+}
+
+function formatRankSelection(rankIds: number[]): string {
+  return SMS_BOWER_RANK_OPTIONS.filter((item) => rankIds.includes(item.id))
+    .map((item) => item.label)
+    .join("、");
 }
 
 function sleep(milliseconds: number): Promise<void> {
@@ -136,6 +148,7 @@ export function SmsBowerClient({
   const [isServicePickerOpen, setIsServicePickerOpen] = useState(false);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
+  const [selectedRankIds, setSelectedRankIds] = useState<number[]>(DEFAULT_SELECTED_RANK_IDS);
   const [earlyRetryMinutes, setEarlyRetryMinutes] = useState(String(DEFAULT_EARLY_RETRY_MINUTES));
   const [earlyRetryIntervalSeconds, setEarlyRetryIntervalSeconds] = useState(
     String(DEFAULT_EARLY_RETRY_INTERVAL_SECONDS),
@@ -164,6 +177,10 @@ export function SmsBowerClient({
   const serviceMatches = useMemo(
     () => filterServices(services, serviceKeyword),
     [serviceKeyword, services],
+  );
+  const filteredItems = useMemo(
+    () => items.filter((item) => item.rankId !== null && selectedRankIds.includes(item.rankId)),
+    [items, selectedRankIds],
   );
   const shouldPollActivations = activations.some((item) =>
     ["STATUS_WAIT_CODE", "STATUS_WAIT_RETRY"].includes(item.activationStatus),
@@ -197,10 +214,21 @@ export function SmsBowerClient({
     return true;
   }
 
+  function toggleRankId(rankId: number) {
+    setSelectedRankIds((current) => {
+      if (current.includes(rankId)) {
+        return current.filter((item) => item !== rankId);
+      }
+
+      return [...current, rankId].sort((a, b) => a - b);
+    });
+  }
+
   function applyFavorite(favorite: SmsBowerFavoriteView) {
     setSelectedService(favorite.serviceCode);
     setMinPrice(favorite.minPrice);
     setMaxPrice(favorite.maxPrice);
+    setSelectedRankIds(favorite.rankIds.length > 0 ? favorite.rankIds : DEFAULT_SELECTED_RANK_IDS);
     setEarlyRetryMinutes(String(favorite.earlyRetryMinutes));
     setEarlyRetryIntervalSeconds(String(favorite.earlyRetryIntervalSeconds));
     setLaterRetryIntervalSeconds(String(favorite.laterRetryIntervalSeconds));
@@ -274,6 +302,11 @@ export function SmsBowerClient({
       return;
     }
 
+    if (selectedRankIds.length === 0) {
+      setError("请至少选择一个职级。");
+      return;
+    }
+
     setIsSavingFavorite(true);
     setError("");
 
@@ -289,6 +322,7 @@ export function SmsBowerClient({
           serviceName: selectedServiceOption.name,
           minPrice,
           maxPrice,
+          rankIds: selectedRankIds,
           earlyRetryMinutes: Number(earlyRetryMinutes),
           earlyRetryIntervalSeconds: Number(earlyRetryIntervalSeconds),
           laterRetryIntervalSeconds: Number(laterRetryIntervalSeconds),
@@ -417,6 +451,11 @@ export function SmsBowerClient({
     }
 
     if (!validatePurchaseStrategy()) {
+      return;
+    }
+
+    if (selectedRankIds.length === 0) {
+      setError("请至少选择一个职级。");
       return;
     }
 
@@ -600,7 +639,8 @@ export function SmsBowerClient({
                           onClick={() => applyFavorite(favorite)}
                         >
                           {favorite.serviceName} / {favorite.minPrice}-{favorite.maxPrice} / 前
-                          {favorite.earlyRetryMinutes}分每{favorite.earlyRetryIntervalSeconds}秒
+                          {favorite.earlyRetryMinutes}分每{favorite.earlyRetryIntervalSeconds}秒 /{" "}
+                          {formatRankSelection(favorite.rankIds)}
                         </button>
                         <button
                           type="button"
@@ -718,6 +758,35 @@ export function SmsBowerClient({
                   >
                     {isSearching ? "查询中..." : "查询国家"}
                   </button>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-[var(--muted)]">职级</p>
+                    <p className="mt-1 text-sm text-[var(--muted)]">可同时选择黄金、白银、青铜。</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {SMS_BOWER_RANK_OPTIONS.map((rank) => (
+                      <label
+                        key={rank.id}
+                        className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-sm font-semibold ${
+                          selectedRankIds.includes(rank.id)
+                            ? getRankClassName(rank.id)
+                            : "border-[var(--border)] bg-white text-[var(--muted)]"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          checked={selectedRankIds.includes(rank.id)}
+                          onChange={() => toggleRankId(rank.id)}
+                        />
+                        {rank.label}
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -908,12 +977,12 @@ export function SmsBowerClient({
               <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">结果</p>
               <h2 className="mt-2 text-2xl font-semibold">符合价位区间的国家</h2>
             </div>
-            <p className="text-sm text-[var(--muted)]">{items.length} 条</p>
+            <p className="text-sm text-[var(--muted)]">{filteredItems.length} 条</p>
           </div>
 
-          {items.length === 0 ? (
+          {filteredItems.length === 0 ? (
             <div className="mt-5 rounded-[24px] border border-dashed border-[var(--border)] bg-white px-5 py-8 text-sm text-[var(--muted)]">
-              选择服务并输入价格区间后，这里会显示所有符合条件的国家和供应商。
+              选择服务、价格区间和职级后，这里会显示所有符合条件的国家和供应商。
             </div>
           ) : (
             <div className="mt-5 overflow-x-auto rounded-[24px] border border-[var(--border)] bg-white">
@@ -929,7 +998,7 @@ export function SmsBowerClient({
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((item) => (
+                  {filteredItems.map((item) => (
                     <tr key={item.id} className="align-middle">
                       <td className="border-t border-[var(--border)] px-4 py-3">
                         <p className="font-medium">{item.countryName}</p>

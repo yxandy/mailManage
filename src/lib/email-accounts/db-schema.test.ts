@@ -148,6 +148,10 @@ test("sms_bower_favorites 表包含服务价格组合和等待策略字段", () 
   );
   assert.match(
     schemaSql,
+    /create table if not exists public\.sms_bower_favorites[\s\S]*\n\s*rank_ids\s+integer\[\]\s+not null\s+default array\[1, 2, 3\],?/i,
+  );
+  assert.match(
+    schemaSql,
     /create table if not exists public\.sms_bower_favorites[\s\S]*\n\s*early_retry_minutes\s+integer\s+not null\s+default 1,?/i,
   );
   assert.match(
