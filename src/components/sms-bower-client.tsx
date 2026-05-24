@@ -564,206 +564,213 @@ export function SmsBowerClient({
         </section>
 
         <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
-          <div className="mb-5 rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-[var(--muted)]">收藏</p>
-                <p className="mt-1 text-sm text-[var(--muted)]">
-                  点击收藏会填入服务、价格区间和购买等待策略。
-                </p>
-              </div>
-              <button
-                type="button"
-                className="rounded-2xl border border-[var(--border)] px-4 py-2 text-sm font-semibold"
-                onClick={() => setIsFavoritesOpen((current) => !current)}
-              >
-                {isFavoritesOpen ? "收起收藏" : `展开收藏（${favorites.length}）`}
-              </button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">查询收藏</p>
+              <h2 className="mt-2 text-2xl font-semibold">收藏与国家查询</h2>
             </div>
-            {isFavoritesOpen ? (
-              favorites.length > 0 ? (
-                <div className="mt-4 flex flex-wrap gap-3">
-                  {favorites.map((favorite) => (
-                    <div
-                      key={favorite.id}
-                      className="inline-flex max-w-full items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm"
-                    >
-                      <button
-                        type="button"
-                        className="max-w-[280px] truncate text-left"
-                        onClick={() => applyFavorite(favorite)}
-                      >
-                        {favorite.serviceName} / {favorite.minPrice}-{favorite.maxPrice} / 前
-                        {favorite.earlyRetryMinutes}分每{favorite.earlyRetryIntervalSeconds}秒
-                      </button>
-                      <button
-                        type="button"
-                        className="text-[var(--muted)] transition hover:text-[var(--danger)] disabled:opacity-60"
-                        onClick={() => void handleDeleteFavorite(favorite.id)}
-                        disabled={deletingFavoriteId === favorite.id}
-                        aria-label="删除收藏"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-4 rounded-2xl border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">
-                  还没有收藏。
-                </p>
-              )
-            ) : null}
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(130px,0.45fr)_minmax(130px,0.45fr)_auto]">
-            <div
-              className="grid gap-2 text-sm"
-              onBlur={(event) => {
-                if (!event.currentTarget.contains(event.relatedTarget)) {
-                  setIsServicePickerOpen(false);
-                }
-              }}
+            <button
+              type="button"
+              className="rounded-2xl border border-[var(--border)] bg-white px-5 py-3 text-sm font-semibold"
+              onClick={() => setIsFavoritesOpen((current) => !current)}
             >
-              <span className="text-[var(--muted)]">服务</span>
-              <div className="relative">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-left"
-                  onClick={() => setIsServicePickerOpen((current) => !current)}
-                >
-                  <span className={selectedServiceOption ? "" : "text-[var(--muted)]"}>
-                    {selectedServiceOption
-                      ? `${selectedServiceOption.name} (${selectedServiceOption.code})`
-                      : "点击搜索服务"}
-                  </span>
-                  <span className="inline-flex w-7 justify-center text-2xl leading-none text-[var(--muted)]">
-                    ⌕
-                  </span>
-                </button>
-                {isServicePickerOpen ? (
-                  <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 rounded-[24px] border border-[var(--border)] bg-[var(--panel)] p-3 shadow-[var(--shadow)]">
-                    <input
-                      autoFocus
-                      value={serviceKeyword}
-                      onChange={(event) => setServiceKeyword(event.target.value)}
-                      placeholder="输入服务名称或代码搜索"
-                      className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-                    />
-                    {serviceKeyword ? (
-                      serviceMatches.length > 0 ? (
-                        <div className="mt-3 max-h-64 overflow-y-auto rounded-2xl border border-[var(--border)] bg-white">
-                          {serviceMatches.map((service) => (
-                            <button
-                              key={service.code}
-                              type="button"
-                              className="flex w-full items-center justify-between px-4 py-3 text-left text-sm transition hover:bg-[var(--panel-strong)]"
-                              onClick={() => {
-                                setSelectedService(service.code);
-                                setServiceKeyword("");
-                                setIsServicePickerOpen(false);
-                              }}
-                            >
-                              <span>{service.name}</span>
-                              <span className="text-[var(--muted)]">{service.code}</span>
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="mt-3 rounded-2xl border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">
-                          没有匹配到服务。
-                        </p>
-                      )
-                    ) : (
-                      <p className="mt-3 rounded-2xl border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">
-                        输入关键词后显示匹配结果。
-                      </p>
-                    )}
+              {isFavoritesOpen ? "收起查询收藏" : `展开查询收藏（${favorites.length}）`}
+            </button>
+          </div>
+
+          {isFavoritesOpen ? (
+            <>
+              <div className="mt-5 rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
+                <div>
+                  <p className="text-sm text-[var(--muted)]">收藏</p>
+                  <p className="mt-1 text-sm text-[var(--muted)]">
+                    点击收藏会填入服务、价格区间和购买等待策略。
+                  </p>
+                </div>
+                {favorites.length > 0 ? (
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    {favorites.map((favorite) => (
+                      <div
+                        key={favorite.id}
+                        className="inline-flex max-w-full items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm"
+                      >
+                        <button
+                          type="button"
+                          className="max-w-[280px] truncate text-left"
+                          onClick={() => applyFavorite(favorite)}
+                        >
+                          {favorite.serviceName} / {favorite.minPrice}-{favorite.maxPrice} / 前
+                          {favorite.earlyRetryMinutes}分每{favorite.earlyRetryIntervalSeconds}秒
+                        </button>
+                        <button
+                          type="button"
+                          className="text-[var(--muted)] transition hover:text-[var(--danger)] disabled:opacity-60"
+                          onClick={() => void handleDeleteFavorite(favorite.id)}
+                          disabled={deletingFavoriteId === favorite.id}
+                          aria-label="删除收藏"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ) : null}
+                ) : (
+                  <p className="mt-4 rounded-2xl border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">
+                    还没有收藏。
+                  </p>
+                )}
               </div>
-            </div>
 
-            <label className="grid gap-2 text-sm">
-              <span className="text-[var(--muted)]">最低价</span>
-              <input
-                value={minPrice}
-                onChange={(event) => setMinPrice(event.target.value)}
-                placeholder="例如 0.02"
-                className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-              />
-            </label>
+              <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(130px,0.45fr)_minmax(130px,0.45fr)_auto]">
+                <div
+                  className="grid gap-2 text-sm"
+                  onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget)) {
+                      setIsServicePickerOpen(false);
+                    }
+                  }}
+                >
+                  <span className="text-[var(--muted)]">服务</span>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      className="flex w-full items-center justify-between rounded-2xl border border-[var(--border)] bg-white px-4 py-3 text-left"
+                      onClick={() => setIsServicePickerOpen((current) => !current)}
+                    >
+                      <span className={selectedServiceOption ? "" : "text-[var(--muted)]"}>
+                        {selectedServiceOption
+                          ? `${selectedServiceOption.name} (${selectedServiceOption.code})`
+                          : "点击搜索服务"}
+                      </span>
+                      <span className="inline-flex w-7 justify-center text-2xl leading-none text-[var(--muted)]">
+                        ⌕
+                      </span>
+                    </button>
+                    {isServicePickerOpen ? (
+                      <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-20 rounded-[24px] border border-[var(--border)] bg-[var(--panel)] p-3 shadow-[var(--shadow)]">
+                        <input
+                          autoFocus
+                          value={serviceKeyword}
+                          onChange={(event) => setServiceKeyword(event.target.value)}
+                          placeholder="输入服务名称或代码搜索"
+                          className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                        />
+                        {serviceKeyword ? (
+                          serviceMatches.length > 0 ? (
+                            <div className="mt-3 max-h-64 overflow-y-auto rounded-2xl border border-[var(--border)] bg-white">
+                              {serviceMatches.map((service) => (
+                                <button
+                                  key={service.code}
+                                  type="button"
+                                  className="flex w-full items-center justify-between px-4 py-3 text-left text-sm transition hover:bg-[var(--panel-strong)]"
+                                  onClick={() => {
+                                    setSelectedService(service.code);
+                                    setServiceKeyword("");
+                                    setIsServicePickerOpen(false);
+                                  }}
+                                >
+                                  <span>{service.name}</span>
+                                  <span className="text-[var(--muted)]">{service.code}</span>
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="mt-3 rounded-2xl border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">
+                              没有匹配到服务。
+                            </p>
+                          )
+                        ) : (
+                          <p className="mt-3 rounded-2xl border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">
+                            输入关键词后显示匹配结果。
+                          </p>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
 
-            <label className="grid gap-2 text-sm">
-              <span className="text-[var(--muted)]">最高价</span>
-              <input
-                value={maxPrice}
-                onChange={(event) => setMaxPrice(event.target.value)}
-                placeholder="例如 0.05"
-                className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-              />
-            </label>
+                <label className="grid gap-2 text-sm">
+                  <span className="text-[var(--muted)]">最低价</span>
+                  <input
+                    value={minPrice}
+                    onChange={(event) => setMinPrice(event.target.value)}
+                    placeholder="例如 0.02"
+                    className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                  />
+                </label>
 
-            <div className="grid items-end">
-              <button
-                type="button"
-                className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold whitespace-nowrap text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
-                onClick={handleSearch}
-                disabled={isSearching}
-              >
-                {isSearching ? "查询中..." : "查询国家"}
-              </button>
-            </div>
-          </div>
+                <label className="grid gap-2 text-sm">
+                  <span className="text-[var(--muted)]">最高价</span>
+                  <input
+                    value={maxPrice}
+                    onChange={(event) => setMaxPrice(event.target.value)}
+                    placeholder="例如 0.05"
+                    className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                  />
+                </label>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(120px,0.6fr)_minmax(120px,0.6fr)_minmax(120px,0.6fr)_minmax(120px,0.6fr)_auto]">
-            <label className="grid gap-2 text-sm">
-              <span className="text-[var(--muted)]">前期时长（分钟）</span>
-              <input
-                value={earlyRetryMinutes}
-                onChange={(event) => setEarlyRetryMinutes(event.target.value)}
-                className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-              />
-            </label>
-            <label className="grid gap-2 text-sm">
-              <span className="text-[var(--muted)]">前期间隔（秒）</span>
-              <input
-                value={earlyRetryIntervalSeconds}
-                onChange={(event) => setEarlyRetryIntervalSeconds(event.target.value)}
-                className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-              />
-            </label>
-            <label className="grid gap-2 text-sm">
-              <span className="text-[var(--muted)]">后期间隔（秒）</span>
-              <input
-                value={laterRetryIntervalSeconds}
-                onChange={(event) => setLaterRetryIntervalSeconds(event.target.value)}
-                className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-              />
-            </label>
-            <label className="grid gap-2 text-sm">
-              <span className="text-[var(--muted)]">最长等待（分钟）</span>
-              <input
-                value={maxWaitMinutes}
-                onChange={(event) => setMaxWaitMinutes(event.target.value)}
-                className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
-              />
-            </label>
-            <div className="grid items-end">
-              <button
-                type="button"
-                className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm font-semibold whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-70"
-                onClick={() => void handleSaveFavorite()}
-                disabled={isSavingFavorite}
-              >
-                {isSavingFavorite ? "收藏中..." : "收藏当前组合"}
-              </button>
-            </div>
-          </div>
+                <div className="grid items-end">
+                  <button
+                    type="button"
+                    className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold whitespace-nowrap text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
+                    onClick={handleSearch}
+                    disabled={isSearching}
+                  >
+                    {isSearching ? "查询中..." : "查询国家"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(120px,0.6fr)_minmax(120px,0.6fr)_minmax(120px,0.6fr)_minmax(120px,0.6fr)_auto]">
+                <label className="grid gap-2 text-sm">
+                  <span className="text-[var(--muted)]">前期时长（分钟）</span>
+                  <input
+                    value={earlyRetryMinutes}
+                    onChange={(event) => setEarlyRetryMinutes(event.target.value)}
+                    className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                  />
+                </label>
+                <label className="grid gap-2 text-sm">
+                  <span className="text-[var(--muted)]">前期间隔（秒）</span>
+                  <input
+                    value={earlyRetryIntervalSeconds}
+                    onChange={(event) => setEarlyRetryIntervalSeconds(event.target.value)}
+                    className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                  />
+                </label>
+                <label className="grid gap-2 text-sm">
+                  <span className="text-[var(--muted)]">后期间隔（秒）</span>
+                  <input
+                    value={laterRetryIntervalSeconds}
+                    onChange={(event) => setLaterRetryIntervalSeconds(event.target.value)}
+                    className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                  />
+                </label>
+                <label className="grid gap-2 text-sm">
+                  <span className="text-[var(--muted)]">最长等待（分钟）</span>
+                  <input
+                    value={maxWaitMinutes}
+                    onChange={(event) => setMaxWaitMinutes(event.target.value)}
+                    className="w-full rounded-2xl border border-[var(--border)] bg-white px-4 py-3"
+                  />
+                </label>
+                <div className="grid items-end">
+                  <button
+                    type="button"
+                    className="rounded-2xl border border-[var(--border)] px-5 py-3 text-sm font-semibold whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-70"
+                    onClick={() => void handleSaveFavorite()}
+                    disabled={isSavingFavorite}
+                  >
+                    {isSavingFavorite ? "收藏中..." : "收藏当前组合"}
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : null}
 
           {error ? <p className="mt-4 text-sm text-[var(--danger)]">{error}</p> : null}
 
-          {purchaseResults.length > 0 ? (
+          {isFavoritesOpen && purchaseResults.length > 0 ? (
             <div className="mt-5 rounded-[24px] border border-[var(--border)] bg-white px-5 py-4 text-sm">
               <p className="font-semibold">最近购买成功</p>
               <div className="mt-2 grid gap-2 text-[var(--muted)]">
