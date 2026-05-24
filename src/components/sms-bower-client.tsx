@@ -150,6 +150,7 @@ export function SmsBowerClient({
   const [favorites, setFavorites] = useState(initialFavorites);
   const [isSavingFavorite, setIsSavingFavorite] = useState(false);
   const [deletingFavoriteId, setDeletingFavoriteId] = useState("");
+  const [isFavoritesOpen, setIsFavoritesOpen] = useState(initialFavorites.length > 0);
   const [purchaseStates, setPurchaseStates] = useState<Record<string, PurchaseState>>({});
   const [purchaseResults, setPurchaseResults] = useState<SmsBowerPurchaseResult[]>([]);
   const [activations, setActivations] = useState(initialActivations);
@@ -204,6 +205,7 @@ export function SmsBowerClient({
     setEarlyRetryIntervalSeconds(String(favorite.earlyRetryIntervalSeconds));
     setLaterRetryIntervalSeconds(String(favorite.laterRetryIntervalSeconds));
     setMaxWaitMinutes(String(favorite.maxWaitMinutes));
+    setIsFavoritesOpen(false);
     setError("");
   }
 
@@ -562,161 +564,57 @@ export function SmsBowerClient({
         </section>
 
         <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">活动号码</p>
-              <h2 className="mt-2 text-2xl font-semibold">当前等待短信的号码</h2>
+          <div className="mb-5 rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-[var(--muted)]">收藏</p>
+                <p className="mt-1 text-sm text-[var(--muted)]">
+                  点击收藏会填入服务、价格区间和购买等待策略。
+                </p>
+              </div>
+              <button
+                type="button"
+                className="rounded-2xl border border-[var(--border)] px-4 py-2 text-sm font-semibold"
+                onClick={() => setIsFavoritesOpen((current) => !current)}
+              >
+                {isFavoritesOpen ? "收起收藏" : `展开收藏（${favorites.length}）`}
+              </button>
             </div>
-            <button
-              type="button"
-              className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
-              onClick={() => void refreshActivationStatus()}
-              disabled={isRefreshingActivations || activations.length === 0}
-            >
-              {isRefreshingActivations ? "刷新中..." : "刷新短信状态"}
-            </button>
-          </div>
-
-          {activations.length === 0 ? (
-            <div className="mt-5 rounded-[24px] border border-dashed border-[var(--border)] bg-white px-5 py-8 text-sm text-[var(--muted)]">
-              当前还没有活动中的 SMS Bower 号码。
-            </div>
-          ) : (
-            <div className="mt-5 overflow-x-auto rounded-[24px] border border-[var(--border)] bg-white">
-              <table className="min-w-full table-fixed border-separate border-spacing-0 text-sm">
-                <thead className="bg-[var(--panel-strong)] text-left text-[var(--muted)]">
-                  <tr>
-                    <th className="w-[20%] px-4 py-3 font-medium">号码</th>
-                    <th className="w-[12%] px-4 py-3 font-medium">成本</th>
-                    <th className="w-[16%] px-4 py-3 font-medium">国家</th>
-                    <th className="w-[14%] px-4 py-3 font-medium">状态</th>
-                    <th className="w-[13%] px-4 py-3 font-medium">可再次收短信</th>
-                    <th className="w-[12%] px-4 py-3 font-medium">最新短信</th>
-                    <th className="w-[13%] px-4 py-3 text-right font-medium">操作</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {activations.map((item) => (
-                    <tr key={item.id} className="align-middle">
-                      <td className="border-t border-[var(--border)] px-4 py-3 font-medium">
-                        {(() => {
-                          const phone = splitPhoneNumberByKnownDialCode(item.phoneNumber);
-
-                          return (
-                            <span className="inline-flex max-w-full items-baseline gap-2">
-                              {phone.dialCode ? (
-                                <span className="shrink-0 text-[var(--muted)]">{phone.dialCode}</span>
-                              ) : null}
-                              <button
-                                type="button"
-                                className="min-w-0 truncate text-left font-semibold transition hover:opacity-75"
-                                onClick={() => void copyText(phone.localNumber)}
-                                title="点击复制不含区号的号码"
-                              >
-                                {phone.localNumber}
-                              </button>
-                            </span>
-                          );
-                        })()}
-                      </td>
-                      <td className="border-t border-[var(--border)] px-4 py-3">
-                        {item.activationCost}
-                      </td>
-                      <td className="border-t border-[var(--border)] px-4 py-3">
-                        <p>{item.countryName}</p>
-                        <p className="mt-1 text-xs text-[var(--muted)]">{item.serviceName}</p>
-                      </td>
-                      <td className="border-t border-[var(--border)] px-4 py-3 font-medium">
-                        {item.activationStatusText}
-                      </td>
-                      <td className="border-t border-[var(--border)] px-4 py-3">
-                        {item.canGetAnotherSms ? "是" : "否"}
-                      </td>
-                      <td className="border-t border-[var(--border)] px-4 py-3 text-[var(--muted)]">
-                        {getSmsBowerSmsDisplay(item)}
-                      </td>
-                      <td className="border-t border-[var(--border)] px-4 py-3 text-right">
-                        <div className="flex min-h-8 items-center justify-end gap-2 whitespace-nowrap">
-                          {hasSmsBowerReceivedSms(item) ? (
-                            <>
-                              {item.canGetAnotherSms ? (
-                                <button
-                                  type="button"
-                                  className="h-8 rounded-xl border border-[var(--border)] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-70"
-                                  onClick={() => void handleActivationAction(item, "retry-sms")}
-                                  disabled={Boolean(activationActionId)}
-                                >
-                                  再次接收
-                                </button>
-                              ) : null}
-                              <button
-                                type="button"
-                                className="h-8 rounded-xl border border-[var(--border)] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-70"
-                                onClick={() => void handleActivationAction(item, "finish")}
-                                disabled={Boolean(activationActionId)}
-                              >
-                                完成
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              type="button"
-                              className="h-8 rounded-xl border border-[var(--border)] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-70"
-                              onClick={() => void handleActivationAction(item, "cancel")}
-                              disabled={Boolean(activationActionId)}
-                            >
-                              取消
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+            {isFavoritesOpen ? (
+              favorites.length > 0 ? (
+                <div className="mt-4 flex flex-wrap gap-3">
+                  {favorites.map((favorite) => (
+                    <div
+                      key={favorite.id}
+                      className="inline-flex max-w-full items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm"
+                    >
+                      <button
+                        type="button"
+                        className="max-w-[280px] truncate text-left"
+                        onClick={() => applyFavorite(favorite)}
+                      >
+                        {favorite.serviceName} / {favorite.minPrice}-{favorite.maxPrice} / 前
+                        {favorite.earlyRetryMinutes}分每{favorite.earlyRetryIntervalSeconds}秒
+                      </button>
+                      <button
+                        type="button"
+                        className="text-[var(--muted)] transition hover:text-[var(--danger)] disabled:opacity-60"
+                        onClick={() => void handleDeleteFavorite(favorite.id)}
+                        disabled={deletingFavoriteId === favorite.id}
+                        aria-label="删除收藏"
+                      >
+                        ×
+                      </button>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
-          {favorites.length > 0 ? (
-            <div className="mb-5 rounded-[24px] border border-[var(--border)] bg-white px-5 py-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-[var(--muted)]">收藏</p>
-                  <p className="mt-1 text-sm text-[var(--muted)]">
-                    点击收藏会填入服务、价格区间和购买等待策略。
-                  </p>
                 </div>
-              </div>
-              <div className="mt-4 flex flex-wrap gap-3">
-                {favorites.map((favorite) => (
-                  <div
-                    key={favorite.id}
-                    className="inline-flex max-w-full items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-sm"
-                  >
-                    <button
-                      type="button"
-                      className="max-w-[280px] truncate text-left"
-                      onClick={() => applyFavorite(favorite)}
-                    >
-                      {favorite.serviceName} / {favorite.minPrice}-{favorite.maxPrice} / 前
-                      {favorite.earlyRetryMinutes}分每{favorite.earlyRetryIntervalSeconds}秒
-                    </button>
-                    <button
-                      type="button"
-                      className="text-[var(--muted)] transition hover:text-[var(--danger)] disabled:opacity-60"
-                      onClick={() => void handleDeleteFavorite(favorite.id)}
-                      disabled={deletingFavoriteId === favorite.id}
-                      aria-label="删除收藏"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : null}
+              ) : (
+                <p className="mt-4 rounded-2xl border border-dashed border-[var(--border)] px-4 py-5 text-sm text-[var(--muted)]">
+                  还没有收藏。
+                </p>
+              )
+            ) : null}
+          </div>
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(130px,0.45fr)_minmax(130px,0.45fr)_auto]">
             <div
@@ -878,6 +776,123 @@ export function SmsBowerClient({
               </div>
             </div>
           ) : null}
+        </section>
+
+        <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">活动号码</p>
+              <h2 className="mt-2 text-2xl font-semibold">当前等待短信的号码</h2>
+            </div>
+            <button
+              type="button"
+              className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
+              onClick={() => void refreshActivationStatus()}
+              disabled={isRefreshingActivations || activations.length === 0}
+            >
+              {isRefreshingActivations ? "刷新中..." : "刷新短信状态"}
+            </button>
+          </div>
+
+          {activations.length === 0 ? (
+            <div className="mt-5 rounded-[24px] border border-dashed border-[var(--border)] bg-white px-5 py-8 text-sm text-[var(--muted)]">
+              当前还没有活动中的 SMS Bower 号码。
+            </div>
+          ) : (
+            <div className="mt-5 overflow-x-auto rounded-[24px] border border-[var(--border)] bg-white">
+              <table className="min-w-full table-fixed border-separate border-spacing-0 text-sm">
+                <thead className="bg-[var(--panel-strong)] text-left text-[var(--muted)]">
+                  <tr>
+                    <th className="w-[20%] px-4 py-3 font-medium">号码</th>
+                    <th className="w-[12%] px-4 py-3 font-medium">成本</th>
+                    <th className="w-[16%] px-4 py-3 font-medium">国家</th>
+                    <th className="w-[14%] px-4 py-3 font-medium">状态</th>
+                    <th className="w-[13%] px-4 py-3 font-medium">可再次收短信</th>
+                    <th className="w-[12%] px-4 py-3 font-medium">最新短信</th>
+                    <th className="w-[13%] px-4 py-3 text-right font-medium">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activations.map((item) => (
+                    <tr key={item.id} className="align-middle">
+                      <td className="border-t border-[var(--border)] px-4 py-3 font-medium">
+                        {(() => {
+                          const phone = splitPhoneNumberByKnownDialCode(item.phoneNumber);
+
+                          return (
+                            <span className="inline-flex max-w-full items-baseline gap-2">
+                              {phone.dialCode ? (
+                                <span className="shrink-0 text-[var(--muted)]">{phone.dialCode}</span>
+                              ) : null}
+                              <button
+                                type="button"
+                                className="min-w-0 truncate text-left font-semibold transition hover:opacity-75"
+                                onClick={() => void copyText(phone.localNumber)}
+                                title="点击复制不含区号的号码"
+                              >
+                                {phone.localNumber}
+                              </button>
+                            </span>
+                          );
+                        })()}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3">
+                        {item.activationCost}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3">
+                        <p>{item.countryName}</p>
+                        <p className="mt-1 text-xs text-[var(--muted)]">{item.serviceName}</p>
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3 font-medium">
+                        {item.activationStatusText}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3">
+                        {item.canGetAnotherSms ? "是" : "否"}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3 text-[var(--muted)]">
+                        {getSmsBowerSmsDisplay(item)}
+                      </td>
+                      <td className="border-t border-[var(--border)] px-4 py-3 text-right">
+                        <div className="flex min-h-8 items-center justify-end gap-2 whitespace-nowrap">
+                          {hasSmsBowerReceivedSms(item) ? (
+                            <>
+                              {item.canGetAnotherSms ? (
+                                <button
+                                  type="button"
+                                  className="h-8 rounded-xl border border-[var(--border)] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-70"
+                                  onClick={() => void handleActivationAction(item, "retry-sms")}
+                                  disabled={Boolean(activationActionId)}
+                                >
+                                  再次接收
+                                </button>
+                              ) : null}
+                              <button
+                                type="button"
+                                className="h-8 rounded-xl border border-[var(--border)] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-70"
+                                onClick={() => void handleActivationAction(item, "finish")}
+                                disabled={Boolean(activationActionId)}
+                              >
+                                完成
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="h-8 rounded-xl border border-[var(--border)] px-3 text-xs disabled:cursor-not-allowed disabled:opacity-70"
+                              onClick={() => void handleActivationAction(item, "cancel")}
+                              disabled={Boolean(activationActionId)}
+                            >
+                              取消
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
 
         <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
