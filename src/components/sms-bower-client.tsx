@@ -102,6 +102,26 @@ function sleep(milliseconds: number): Promise<void> {
   });
 }
 
+async function parseJsonResponse<T>(response: Response, fallbackMessage: string): Promise<T> {
+  const text = await response.text();
+
+  if (!text.trim()) {
+    return {} as T;
+  }
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    const isHtml = text.trimStart().startsWith("<");
+
+    throw new Error(
+      isHtml
+        ? `${fallbackMessage}：服务端返回了 HTML 错误页（HTTP ${response.status}）`
+        : `${fallbackMessage}：服务端返回了无法解析的内容`,
+    );
+  }
+}
+
 function getSmsBowerSmsDisplay(item: SmsBowerActivationView): string {
   return item.smsCode?.trim() || item.smsText?.trim() || "等待接收短信";
 }
@@ -241,7 +261,7 @@ export function SmsBowerClient({
     const response = await fetch("/api/sms-bower/activations", {
       cache: "no-store",
     });
-    const result = (await response.json()) as ActivationsResponse;
+    const result = await parseJsonResponse<ActivationsResponse>(response, "读取活动号码失败");
 
     if (!response.ok) {
       throw new Error(result.error ?? "读取活动号码失败");
@@ -266,7 +286,7 @@ export function SmsBowerClient({
       const response = await fetch("/api/sms-bower/activations/refresh", {
         method: "POST",
       });
-      const result = (await response.json()) as ActivationsResponse;
+      const result = await parseJsonResponse<ActivationsResponse>(response, "刷新短信状态失败");
 
       if (!response.ok) {
         throw new Error(result.error ?? "刷新短信状态失败");
@@ -329,7 +349,7 @@ export function SmsBowerClient({
           maxWaitMinutes: Number(maxWaitMinutes),
         }),
       });
-      const result = (await response.json()) as FavoritesResponse;
+      const result = await parseJsonResponse<FavoritesResponse>(response, "收藏失败");
 
       if (!response.ok) {
         throw new Error(result.error ?? "收藏失败");
@@ -359,7 +379,7 @@ export function SmsBowerClient({
         },
         body: JSON.stringify({ id }),
       });
-      const result = (await response.json()) as FavoritesResponse;
+      const result = await parseJsonResponse<FavoritesResponse>(response, "删除收藏失败");
 
       if (!response.ok) {
         throw new Error(result.error ?? "删除收藏失败");
@@ -392,7 +412,7 @@ export function SmsBowerClient({
         },
         body: JSON.stringify({ action }),
       });
-      const result = (await response.json()) as { error?: string };
+      const result = await parseJsonResponse<{ error?: string }>(response, "操作失败");
 
       if (!response.ok) {
         throw new Error(result.error ?? "操作失败");
@@ -470,7 +490,7 @@ export function SmsBowerClient({
         maxPrice: String(max),
       });
       const response = await fetch(`/api/sms-bower/prices?${params.toString()}`);
-      const result = (await response.json()) as PricesResponse;
+      const result = await parseJsonResponse<PricesResponse>(response, "查询失败");
 
       if (!response.ok) {
         throw new Error(result.error ?? "查询失败");
@@ -530,7 +550,30 @@ export function SmsBowerClient({
             notifyOnSuccess: shouldNotifyOnSuccess,
           }),
         });
-        const result = (await response.json()) as PurchaseResponse;
+        let result: PurchaseResponse;
+
+        try {
+          result = await parseJsonResponse<PurchaseResponse>(response, "购买失败");
+        } catch (parseError) {
+          setPurchaseStates((current) => ({
+            ...current,
+            [item.id]: "waiting",
+          }));
+          await sleep(
+            getRetryIntervalMs({
+              startedAt,
+              earlyRetryMinutes,
+              earlyRetryIntervalSeconds,
+              laterRetryIntervalSeconds,
+            }),
+          );
+
+          if (Date.now() <= deadline) {
+            continue;
+          }
+
+          throw parseError;
+        }
 
         if (response.status === 409 && result.pending) {
           shouldNotifyOnSuccess = true;
