@@ -286,10 +286,14 @@ export function mapSmsBowerFrontendPrices(input: {
   response: SmsBowerFrontendPricesResponse;
   serviceId: number;
   serviceCode: string;
+  countries?: SmsBowerCountryOption[];
   minPrice: number;
   maxPrice: number;
 }): SmsBowerPriceResult[] {
   const service = input.response.services?.[String(input.serviceId)];
+  const countryNameByCode = new Map(
+    (input.countries ?? []).map((country) => [String(country.id), country.name]),
+  );
   const results: SmsBowerPriceResult[] = [];
 
   if (!service?.countries) {
@@ -299,7 +303,8 @@ export function mapSmsBowerFrontendPrices(input: {
   for (const [countryKey, country] of Object.entries(service.countries)) {
     const countryId = Number(country.id ?? countryKey);
     const countryCode = Number(country.activate_org_code);
-    const countryName = country.title?.trim() || `国家 ${countryId}`;
+    const countryName =
+      countryNameByCode.get(String(countryCode)) ?? country.title?.trim() ?? `国家 ${countryCode}`;
     const countryType = getCountryType(country);
 
     if (!Number.isFinite(countryId) || !Number.isFinite(countryCode) || isVirtualCountry(country)) {

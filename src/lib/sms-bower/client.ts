@@ -3,6 +3,7 @@ import { getRequiredEnv } from "../env";
 import {
   mapSmsBowerFrontendPrices,
   mapSmsBowerFrontendServices,
+  mapSmsBowerCountries,
   mapSmsBowerPurchaseV2,
   mapSmsBowerStatusText,
 } from "./transformers";
@@ -67,6 +68,16 @@ async function fetchSmsBowerJson<T>(params: URLSearchParams): Promise<T> {
   }
 }
 
+async function getSmsBowerCountries(): Promise<SmsBowerCountryOption[]> {
+  const response = await fetchSmsBowerJson<Parameters<typeof mapSmsBowerCountries>[0]>(
+    new URLSearchParams({
+      action: "getCountries",
+    }),
+  );
+
+  return mapSmsBowerCountries(response);
+}
+
 async function fetchSmsBowerWebJson<T>(path: string, params: URLSearchParams): Promise<T> {
   const response = await fetch(`${SMS_BOWER_WEB_BASE_URL}${path}?${params.toString()}`, {
     method: "GET",
@@ -94,19 +105,20 @@ export async function getSmsBowerOptions(): Promise<{
   services: SmsBowerServiceOption[];
   countries: SmsBowerCountryOption[];
 }> {
-  const frontendServicesResponse = await fetchSmsBowerWebJson<
-    Parameters<typeof mapSmsBowerFrontendServices>[0]
-  >(
-    "/activations/getPricesByService",
-    new URLSearchParams({
-      serviceId: "4",
-      withPopular: "true",
-    }),
-  );
+  const [frontendServicesResponse, countries] = await Promise.all([
+    fetchSmsBowerWebJson<Parameters<typeof mapSmsBowerFrontendServices>[0]>(
+      "/activations/getPricesByService",
+      new URLSearchParams({
+        serviceId: "4",
+        withPopular: "true",
+      }),
+    ),
+    getSmsBowerCountries(),
+  ]);
 
   return {
     services: mapSmsBowerFrontendServices(frontendServicesResponse),
-    countries: [],
+    countries,
   };
 }
 
@@ -116,18 +128,22 @@ export async function searchSmsBowerPrices(input: {
   minPrice: number;
   maxPrice: number;
 }): Promise<SmsBowerPriceResult[]> {
-  const response = await fetchSmsBowerWebJson<Parameters<typeof mapSmsBowerFrontendPrices>[0]["response"]>(
-    "/activations/getPricesByService",
-    new URLSearchParams({
-      serviceId: String(input.serviceId),
-      withPopular: "true",
-    }),
-  );
+  const [response, countries] = await Promise.all([
+    fetchSmsBowerWebJson<Parameters<typeof mapSmsBowerFrontendPrices>[0]["response"]>(
+      "/activations/getPricesByService",
+      new URLSearchParams({
+        serviceId: String(input.serviceId),
+        withPopular: "true",
+      }),
+    ),
+    getSmsBowerCountries(),
+  ]);
 
   return mapSmsBowerFrontendPrices({
     response,
     serviceId: input.serviceId,
     serviceCode: input.serviceCode,
+    countries,
     minPrice: input.minPrice,
     maxPrice: input.maxPrice,
   });

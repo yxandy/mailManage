@@ -199,6 +199,7 @@ test("SMS Bower 前台价格会保留官网显示为少的低库存档位", () =
     serviceCode: "dr",
     minPrice: 0.006,
     maxPrice: 0.006,
+    countries: [{ id: 196, name: "新加坡" }],
     response: {
       services: {
         "247": {
@@ -234,7 +235,7 @@ test("SMS Bower 前台价格会保留官网显示为少的低库存档位", () =
       serviceCode: "dr",
       countryId: 232,
       countryCode: 196,
-      countryName: "Singapore",
+      countryName: "新加坡",
       countryType: "normal",
       providerId: "2260",
       providerIds: "2260",
