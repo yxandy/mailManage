@@ -608,13 +608,25 @@ export function SmsBowerClient({
               <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">查询收藏</p>
               <h2 className="mt-2 text-2xl font-semibold">收藏与国家查询</h2>
             </div>
-            <button
-              type="button"
-              className="rounded-2xl border border-[var(--border)] bg-white px-5 py-3 text-sm font-semibold"
-              onClick={() => setIsFavoritesOpen((current) => !current)}
-            >
-              {isFavoritesOpen ? "收起查询收藏" : `展开查询收藏（${favorites.length}）`}
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                className="rounded-2xl border border-[var(--border)] bg-white px-5 py-3 text-sm font-semibold"
+                onClick={() => setIsFavoritesOpen((current) => !current)}
+              >
+                {isFavoritesOpen ? "收起查询收藏" : `展开查询收藏（${favorites.length}）`}
+              </button>
+              {!isFavoritesOpen ? (
+                <button
+                  type="button"
+                  className="rounded-2xl bg-[var(--primary)] px-5 py-3 text-sm font-semibold whitespace-nowrap text-[var(--primary-foreground)] disabled:cursor-not-allowed disabled:opacity-70"
+                  onClick={handleSearch}
+                  disabled={isSearching}
+                >
+                  {isSearching ? "查询中..." : "查询国家"}
+                </button>
+              ) : null}
+            </div>
           </div>
 
           {isFavoritesOpen ? (
