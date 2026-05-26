@@ -1635,20 +1635,29 @@ export function HeroSmsReadonlyClient({
                             });
 
                             return (
-                              <span className="inline-flex max-w-full items-baseline gap-2">
-                                {phone.dialCode ? (
-                                  <span className="shrink-0 text-[var(--muted)]">{phone.dialCode}</span>
-                                ) : null}
-                                <button
-                                  type="button"
-                                  className="min-w-0 cursor-pointer truncate text-left font-semibold transition hover:opacity-75"
-                                  onClick={() =>
-                                    copyText(phone.localNumber, `activation-phone-${item.id}`)
-                                  }
-                                  title="点击复制不含区号的号码"
-                                >
-                                  {phone.localNumber}
-                                </button>
+                              <span className="inline-flex max-w-full flex-col gap-1">
+                                <span className="inline-flex items-baseline gap-2">
+                                  {phone.dialCode ? (
+                                    <span className="shrink-0 text-[var(--muted)]">
+                                      {phone.dialCode}
+                                    </span>
+                                  ) : null}
+                                  <button
+                                    type="button"
+                                    className="min-w-0 cursor-copy truncate rounded-xl px-2 py-1 text-left font-semibold transition hover:bg-amber-50 hover:text-amber-700"
+                                    onClick={() =>
+                                      copyText(phone.localNumber, `activation-phone-${item.id}`)
+                                    }
+                                    title="点击复制不含区号的号码"
+                                  >
+                                    {phone.localNumber}
+                                  </button>
+                                </span>
+                                <span className="text-xs text-amber-700">
+                                  {copiedField === `activation-phone-${item.id}`
+                                    ? "已复制号码"
+                                    : "点号码复制"}
+                                </span>
                               </span>
                             );
                           })()}
@@ -1683,7 +1692,7 @@ export function HeroSmsReadonlyClient({
                             <>
                               <button
                                 type="button"
-                                className="block max-w-full cursor-pointer truncate text-left transition hover:opacity-75"
+                                className="block max-w-full cursor-copy truncate rounded-xl bg-amber-50 px-3 py-2 text-left font-semibold text-amber-800 transition hover:bg-amber-100"
                                 onClick={() =>
                                   copyText(smsDisplayText, `activation-sms-${item.id}`)
                                 }
@@ -1691,6 +1700,11 @@ export function HeroSmsReadonlyClient({
                               >
                                 {smsDisplayText}
                               </button>
+                              <span className="mt-1 block text-xs text-amber-700">
+                                {copiedField === `activation-sms-${item.id}`
+                                  ? "已复制短信"
+                                  : "点短信复制"}
+                              </span>
                             </>
                           ) : (
                             <>
