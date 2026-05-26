@@ -1661,7 +1661,7 @@ export function HeroSmsReadonlyClient({
                                 >
                                   <span className="absolute left-[8px] top-[10px] h-[15px] w-[15px] rounded-[3px] border-2 border-current opacity-70" />
                                   <span className="absolute left-[13px] top-[5px] h-[15px] w-[15px] rounded-[3px] border-2 border-current bg-white" />
-                                  <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow transition group-hover:opacity-100">
+                                  <span className="pointer-events-none absolute bottom-full left-full z-20 mb-1 ml-1 whitespace-nowrap rounded-lg bg-slate-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow transition group-hover:opacity-100">
                                     {copiedField === `activation-phone-${item.id}` ? "已复制" : "复制"}
                                   </span>
                                 </button>
@@ -1717,7 +1717,7 @@ export function HeroSmsReadonlyClient({
                               >
                                 <span className="absolute left-[8px] top-[10px] h-[15px] w-[15px] rounded-[3px] border-2 border-current opacity-70" />
                                 <span className="absolute left-[13px] top-[5px] h-[15px] w-[15px] rounded-[3px] border-2 border-current bg-white" />
-                                <span className="pointer-events-none absolute left-1/2 top-full z-20 mt-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow transition group-hover:opacity-100">
+                                <span className="pointer-events-none absolute bottom-full left-full z-20 mb-1 ml-1 whitespace-nowrap rounded-lg bg-slate-900 px-2 py-1 text-xs font-medium text-white opacity-0 shadow transition group-hover:opacity-100">
                                   {copiedField === `activation-sms-${item.id}` ? "已复制" : "复制"}
                                 </span>
                               </button>
