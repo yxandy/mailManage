@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   SmsBowerActivationView,
   SmsBowerCountryOption,
+  SmsBowerCountryFavoriteView,
   SmsBowerFavoriteView,
   SmsBowerPriceResult,
   SmsBowerPurchaseResult,
@@ -17,6 +18,7 @@ type SmsBowerClientProps = {
   initialCountries: SmsBowerCountryOption[];
   initialActivations: SmsBowerActivationView[];
   initialFavorites: SmsBowerFavoriteView[];
+  initialCountryFavorites: SmsBowerCountryFavoriteView[];
 };
 
 type PricesResponse = {
@@ -37,6 +39,11 @@ type ActivationsResponse = {
 
 type FavoritesResponse = {
   items: SmsBowerFavoriteView[];
+  error?: string;
+};
+
+type CountryFavoritesResponse = {
+  items: SmsBowerCountryFavoriteView[];
   error?: string;
 };
 
@@ -161,6 +168,7 @@ export function SmsBowerClient({
   initialServices,
   initialActivations,
   initialFavorites,
+  initialCountryFavorites,
 }: SmsBowerClientProps) {
   const [services] = useState(initialServices);
   const [selectedService, setSelectedService] = useState("");
@@ -181,8 +189,11 @@ export function SmsBowerClient({
   const [error, setError] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [favorites, setFavorites] = useState(initialFavorites);
+  const [countryFavorites, setCountryFavorites] = useState(initialCountryFavorites);
+  const [showOnlyFavoriteCountries, setShowOnlyFavoriteCountries] = useState(false);
   const [isSavingFavorite, setIsSavingFavorite] = useState(false);
   const [deletingFavoriteId, setDeletingFavoriteId] = useState("");
+  const [updatingCountryFavoriteId, setUpdatingCountryFavoriteId] = useState<number | null>(null);
   const [isFavoritesOpen, setIsFavoritesOpen] = useState(initialFavorites.length > 0);
   const [purchaseStates, setPurchaseStates] = useState<Record<string, PurchaseState>>({});
   const [purchaseResults, setPurchaseResults] = useState<SmsBowerPurchaseResult[]>([]);
@@ -198,10 +209,29 @@ export function SmsBowerClient({
     () => filterServices(services, serviceKeyword),
     [serviceKeyword, services],
   );
-  const filteredItems = useMemo(
-    () => items.filter((item) => item.rankId !== null && selectedRankIds.includes(item.rankId)),
-    [items, selectedRankIds],
+  const favoriteCountryIds = useMemo(
+    () => new Set(countryFavorites.map((item) => item.countryId)),
+    [countryFavorites],
   );
+  const filteredItems = useMemo(() => {
+    const rankFilteredItems = items.filter(
+      (item) => item.rankId !== null && selectedRankIds.includes(item.rankId),
+    );
+    const countryFilteredItems = showOnlyFavoriteCountries
+      ? rankFilteredItems.filter((item) => favoriteCountryIds.has(item.countryCode))
+      : rankFilteredItems;
+
+    return [...countryFilteredItems].sort((a, b) => {
+      const favoriteDiff =
+        Number(favoriteCountryIds.has(b.countryCode)) - Number(favoriteCountryIds.has(a.countryCode));
+
+      if (favoriteDiff !== 0) {
+        return favoriteDiff;
+      }
+
+      return items.indexOf(a) - items.indexOf(b);
+    });
+  }, [favoriteCountryIds, items, selectedRankIds, showOnlyFavoriteCountries]);
   const shouldPollActivations = activations.some((item) =>
     ["STATUS_WAIT_CODE", "STATUS_WAIT_RETRY"].includes(item.activationStatus),
   );
@@ -390,6 +420,50 @@ export function SmsBowerClient({
       setError(favoriteError instanceof Error ? favoriteError.message : "删除收藏失败");
     } finally {
       setDeletingFavoriteId("");
+    }
+  }
+
+  async function handleToggleCountryFavorite(item: SmsBowerPriceResult) {
+    if (updatingCountryFavoriteId !== null) {
+      return;
+    }
+
+    const isFavorite = favoriteCountryIds.has(item.countryCode);
+
+    setUpdatingCountryFavoriteId(item.countryCode);
+    setError("");
+
+    try {
+      const response = await fetch("/api/sms-bower/country-favorites", {
+        method: isFavorite ? "DELETE" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          countryId: item.countryCode,
+          countryName: item.countryName,
+        }),
+      });
+      const result = await parseJsonResponse<CountryFavoritesResponse>(
+        response,
+        isFavorite ? "取消收藏国家失败" : "收藏国家失败",
+      );
+
+      if (!response.ok) {
+        throw new Error(result.error ?? (isFavorite ? "取消收藏国家失败" : "收藏国家失败"));
+      }
+
+      setCountryFavorites(result.items);
+    } catch (favoriteError) {
+      setError(
+        favoriteError instanceof Error
+          ? favoriteError.message
+          : isFavorite
+            ? "取消收藏国家失败"
+            : "收藏国家失败",
+      );
+    } finally {
+      setUpdatingCountryFavoriteId(null);
     }
   }
 
@@ -1027,12 +1101,23 @@ export function SmsBowerClient({
         </section>
 
         <section className="rounded-[28px] border border-[var(--border)] bg-[var(--panel)] p-6 shadow-[var(--shadow)]">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-sm uppercase tracking-[0.3em] text-[var(--muted)]">结果</p>
               <h2 className="mt-2 text-2xl font-semibold">符合价位区间的国家</h2>
             </div>
-            <p className="text-sm text-[var(--muted)]">{filteredItems.length} 条</p>
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="inline-flex items-center gap-2 text-sm text-[var(--muted)]">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={showOnlyFavoriteCountries}
+                  onChange={(event) => setShowOnlyFavoriteCountries(event.target.checked)}
+                />
+                只看收藏国家
+              </label>
+              <p className="text-sm text-[var(--muted)]">{filteredItems.length} 条</p>
+            </div>
           </div>
 
           {filteredItems.length === 0 ? (
@@ -1044,63 +1129,90 @@ export function SmsBowerClient({
               <table className="min-w-full table-fixed border-separate border-spacing-0 text-sm">
                 <thead className="bg-[var(--panel-strong)] text-left text-[var(--muted)]">
                   <tr>
-                    <th className="w-[24%] px-4 py-3 font-medium">国家</th>
+                    <th className="w-[26%] px-4 py-3 font-medium">国家</th>
                     <th className="w-[14%] px-4 py-3 font-medium">职级</th>
                     <th className="w-[18%] px-4 py-3 font-medium">Provider</th>
                     <th className="w-[13%] px-4 py-3 font-medium">价格</th>
                     <th className="w-[12%] px-4 py-3 font-medium">库存</th>
-                    <th className="w-[19%] px-4 py-3 text-right font-medium">操作</th>
+                    <th className="w-[17%] px-4 py-3 text-right font-medium">操作</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredItems.map((item) => (
-                    <tr key={item.id} className="align-middle">
-                      <td className="border-t border-[var(--border)] px-4 py-3">
-                        <p className="font-medium">{item.countryName}</p>
-                        <p className="mt-1 text-xs text-[var(--muted)]">
-                          {item.countryCode}
-                          {item.countryType === "virtual" ? " · 虚拟" : ""}
-                        </p>
-                      </td>
-                      <td className="border-t border-[var(--border)] px-4 py-3">
-                        <span
-                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getRankClassName(item.rankId)}`}
-                        >
-                          {item.rank}
-                        </span>
-                      </td>
-                      <td className="border-t border-[var(--border)] px-4 py-3">
-                        {item.providerCount > 1
-                          ? `${item.providerId} 等 ${item.providerCount} 个`
-                          : item.providerId}
-                      </td>
-                      <td className="border-t border-[var(--border)] px-4 py-3 font-semibold">
-                        {item.price}
-                      </td>
-                      <td className="border-t border-[var(--border)] px-4 py-3">
-                        {item.countLabel}
-                      </td>
-                      <td className="border-t border-[var(--border)] px-4 py-3 text-right">
-                        {purchaseStates[item.id] ? (
-                          <button
-                            type="button"
-                            className="rounded-2xl border border-[var(--danger)] px-4 py-2 text-xs font-semibold text-[var(--danger)]"
-                            onClick={() => cancelPendingPurchase(item.id)}
+                  {filteredItems.map((item) => {
+                    const isCountryFavorite = favoriteCountryIds.has(item.countryCode);
+
+                    return (
+                      <tr key={item.id} className="align-middle">
+                        <td className="border-t border-[var(--border)] px-4 py-3">
+                          <div className="flex items-start gap-3">
+                            <button
+                              type="button"
+                              className={`mt-0.5 text-lg leading-none transition ${
+                                isCountryFavorite ? "text-amber-500" : "text-[var(--muted)]"
+                              } disabled:cursor-not-allowed disabled:opacity-60`}
+                              onClick={() => void handleToggleCountryFavorite(item)}
+                              disabled={updatingCountryFavoriteId === item.countryCode}
+                              aria-label={isCountryFavorite ? "取消收藏国家" : "收藏国家"}
+                              title={isCountryFavorite ? "取消收藏国家" : "收藏国家"}
+                            >
+                              {isCountryFavorite ? "★" : "☆"}
+                            </button>
+                            <div>
+                              <p className="font-medium">
+                                {item.countryName}
+                                {isCountryFavorite ? (
+                                  <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
+                                    已收藏
+                                  </span>
+                                ) : null}
+                              </p>
+                              <p className="mt-1 text-xs text-[var(--muted)]">
+                                {item.countryCode}
+                                {item.countryType === "virtual" ? " · 虚拟" : ""}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="border-t border-[var(--border)] px-4 py-3">
+                          <span
+                            className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getRankClassName(item.rankId)}`}
                           >
-                            {purchaseStates[item.id] === "waiting" ? "停止等待" : "取消购买"}
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            className="rounded-2xl bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-[var(--primary-foreground)]"
-                            onClick={() => void handlePurchase(item)}
-                          >
-                            购买 1 条号码
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                            {item.rank}
+                          </span>
+                        </td>
+                        <td className="border-t border-[var(--border)] px-4 py-3">
+                          {item.providerCount > 1
+                            ? `${item.providerId} 等 ${item.providerCount} 个`
+                            : item.providerId}
+                        </td>
+                        <td className="border-t border-[var(--border)] px-4 py-3 font-semibold">
+                          {item.price}
+                        </td>
+                        <td className="border-t border-[var(--border)] px-4 py-3">
+                          {item.countLabel}
+                        </td>
+                        <td className="border-t border-[var(--border)] px-4 py-3 text-right">
+                          {purchaseStates[item.id] ? (
+                            <button
+                              type="button"
+                              className="rounded-2xl border border-[var(--danger)] px-4 py-2 text-xs font-semibold text-[var(--danger)]"
+                              onClick={() => cancelPendingPurchase(item.id)}
+                            >
+                              {purchaseStates[item.id] === "waiting" ? "停止等待" : "取消购买"}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="rounded-2xl bg-[var(--primary)] px-4 py-2 text-xs font-semibold text-[var(--primary-foreground)]"
+                              onClick={() => void handlePurchase(item)}
+                            >
+                              购买 1 条号码
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -126,6 +126,21 @@ export type SmsBowerFavoriteView = {
   maxWaitMinutes: number;
 };
 
+export type SmsBowerCountryFavoriteRecord = {
+  id: string;
+  country_id: number;
+  country_name: string;
+  deleted_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SmsBowerCountryFavoriteView = {
+  id: string;
+  countryId: number;
+  countryName: string;
+};
+
 export type SmsBowerWebhookPayload = {
   activationId?: string | number;
   service?: string;

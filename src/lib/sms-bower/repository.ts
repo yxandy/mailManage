@@ -2,6 +2,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 import type {
   SmsBowerActivationRecord,
+  SmsBowerCountryFavoriteRecord,
   SmsBowerFavoriteRecord,
   SmsBowerPriceResult,
   SmsBowerPurchaseResult,
@@ -230,5 +231,65 @@ export async function softDeleteSmsBowerFavorite(id: string): Promise<void> {
 
   if (error) {
     throw new Error(`删除 SMS Bower 收藏失败：${error.message}`);
+  }
+}
+
+export async function listSmsBowerCountryFavorites(): Promise<SmsBowerCountryFavoriteRecord[]> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from("sms_bower_country_favorites")
+    .select("*")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw new Error(`查询 SMS Bower 国家收藏失败：${error.message}`);
+  }
+
+  return (data ?? []) as SmsBowerCountryFavoriteRecord[];
+}
+
+export async function createSmsBowerCountryFavorite(input: {
+  countryId: number;
+  countryName: string;
+}): Promise<void> {
+  const supabase = createSupabaseServerClient();
+  const { data: existingData, error: existingError } = await supabase
+    .from("sms_bower_country_favorites")
+    .select("id")
+    .eq("country_id", input.countryId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (existingError) {
+    throw new Error(`查询 SMS Bower 国家收藏失败：${existingError.message}`);
+  }
+
+  if (existingData) {
+    return;
+  }
+
+  const { error } = await supabase.from("sms_bower_country_favorites").insert({
+    country_id: input.countryId,
+    country_name: input.countryName,
+  });
+
+  if (error) {
+    throw new Error(`写入 SMS Bower 国家收藏失败：${error.message}`);
+  }
+}
+
+export async function softDeleteSmsBowerCountryFavorite(countryId: number): Promise<void> {
+  const supabase = createSupabaseServerClient();
+  const { error } = await supabase
+    .from("sms_bower_country_favorites")
+    .update({
+      deleted_at: new Date().toISOString(),
+    })
+    .eq("country_id", countryId)
+    .is("deleted_at", null);
+
+  if (error) {
+    throw new Error(`删除 SMS Bower 国家收藏失败：${error.message}`);
   }
 }

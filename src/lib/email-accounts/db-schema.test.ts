@@ -160,6 +160,23 @@ test("sms_bower_favorites 表包含服务价格组合和等待策略字段", () 
   );
 });
 
+test("sms_bower_country_favorites 表包含国家收藏字段与唯一索引", () => {
+  const schemaSql = readFileSync(schemaFilePath, "utf8");
+
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.sms_bower_country_favorites[\s\S]*\n\s*country_id\s+integer\s+not null,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.sms_bower_country_favorites[\s\S]*\n\s*country_name\s+text\s+not null,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create unique index if not exists idx_sms_bower_country_favorites_unique_live_country\s+on public\.sms_bower_country_favorites \(country_id\)\s+where deleted_at is null;/i,
+  );
+});
+
 test("notification_events 表包含提醒队列核心字段与唯一去重键", () => {
   const schemaSql = readFileSync(schemaFilePath, "utf8");
 

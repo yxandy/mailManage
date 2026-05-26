@@ -1,6 +1,8 @@
 import type {
   SmsBowerActivationRecord,
   SmsBowerActivationView,
+  SmsBowerCountryFavoriteRecord,
+  SmsBowerCountryFavoriteView,
   SmsBowerFavoriteRecord,
   SmsBowerFavoriteView,
 } from "./types";
@@ -79,5 +81,15 @@ export function mapSmsBowerFavoriteRecordToView(
     earlyRetryIntervalSeconds: record.early_retry_interval_seconds,
     laterRetryIntervalSeconds: record.later_retry_interval_seconds,
     maxWaitMinutes: record.max_wait_minutes,
+  };
+}
+
+export function mapSmsBowerCountryFavoriteRecordToView(
+  record: SmsBowerCountryFavoriteRecord,
+): SmsBowerCountryFavoriteView {
+  return {
+    id: record.id,
+    countryId: record.country_id,
+    countryName: record.country_name,
   };
 }
