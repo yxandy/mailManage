@@ -26,6 +26,40 @@ test("email_accounts 表包含 is_plus 字段", () => {
   );
 });
 
+test("email_account_type_states 表包含类型归属状态字段", () => {
+  const schemaSql = readFileSync(schemaFilePath, "utf8");
+
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.email_account_type_states[\s\S]*\n\s*email_account_id\s+uuid\s+not null references public\.email_accounts \(id\) on delete cascade,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.email_account_type_states[\s\S]*\n\s*type_code\s+text\s+not null,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.email_account_type_states[\s\S]*\n\s*is_registered\s+boolean\s+not null\s+default false,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.email_account_type_states[\s\S]*\n\s*is_linked_s2a\s+boolean\s+not null\s+default false,?/i,
+  );
+  assert.match(
+    schemaSql,
+    /create table if not exists public\.email_account_type_states[\s\S]*\n\s*is_expired\s+boolean\s+not null\s+default false,?/i,
+  );
+});
+
+test("email_account_type_states 表按邮箱和类型约束有效记录唯一", () => {
+  const schemaSql = readFileSync(schemaFilePath, "utf8");
+
+  assert.match(
+    schemaSql,
+    /create unique index if not exists idx_email_account_type_states_unique_live_type\s+on public\.email_account_type_states \(email_account_id, type_code\)\s+where deleted_at is null;/i,
+  );
+});
+
 test("system_settings 表包含 cny_price 字段", () => {
   const schemaSql = readFileSync(schemaFilePath, "utf8");
 

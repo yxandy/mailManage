@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { EmailAccountRecord } from "@/lib/email-accounts/schema";
+import type { EmailAccountRecord, EmailAccountTypeCode } from "@/lib/email-accounts/schema";
 import type { EmailAccountDashboardStats } from "@/lib/email-accounts/stats";
 import { getEmailNameColorClass } from "@/lib/email-accounts/status";
 
@@ -14,7 +14,7 @@ type DashboardClientProps = {
   username: string;
   items: EmailAccountRecord[];
   stats: EmailAccountDashboardStats;
-  tier: "free" | "plus";
+  tier: EmailAccountTypeCode;
   cnyPrice: number;
   emailDomainOptions: string[];
   currentPage: number;
@@ -76,7 +76,7 @@ function formatRegisteredDuration(value?: string | null) {
 }
 
 function buildTierHref(
-  tier: "free" | "plus",
+  tier: EmailAccountTypeCode,
   searchParams: Record<string, string | string[] | undefined>,
 ) {
   const params = new URLSearchParams();
@@ -125,6 +125,11 @@ export function DashboardClient({
     toStringArray(searchParams.domain),
   );
   const [isDomainDropdownOpen, setIsDomainDropdownOpen] = useState(false);
+  const tierOptions: Array<{ code: EmailAccountTypeCode; label: string }> = [
+    { code: "free", label: "free" },
+    { code: "plus", label: "plus" },
+    { code: "g", label: "G" },
+  ];
 
   async function handleDelete(id: string) {
     const confirmed = window.confirm("确认删除这条邮箱账号记录吗？该操作会执行软删除。");
@@ -308,26 +313,19 @@ export function DashboardClient({
                   ￥ {cnyPrice.toFixed(2)}
                 </button>
                 <div className="inline-flex overflow-hidden rounded-2xl border border-[var(--border)] bg-white">
-                  <a
-                    href={buildTierHref("free", searchParams)}
-                    className={`px-4 py-3 text-sm font-medium ${
-                      tier === "free"
-                        ? "bg-[var(--primary)] !text-white"
-                        : "text-[var(--foreground)]"
-                    }`}
-                  >
-                    free
-                  </a>
-                  <a
-                    href={buildTierHref("plus", searchParams)}
-                    className={`border-l border-[var(--border)] px-4 py-3 text-sm font-medium ${
-                      tier === "plus"
-                        ? "bg-[var(--primary)] !text-white"
-                        : "text-[var(--foreground)]"
-                    }`}
-                  >
-                    plus
-                  </a>
+                  {tierOptions.map((item, index) => (
+                    <a
+                      key={item.code}
+                      href={buildTierHref(item.code, searchParams)}
+                      className={`${index > 0 ? "border-l border-[var(--border)]" : ""} px-4 py-3 text-sm font-medium ${
+                        tier === item.code
+                          ? "bg-[var(--primary)] !text-white"
+                          : "text-[var(--foreground)]"
+                      }`}
+                    >
+                      {item.label}
+                    </a>
+                  ))}
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <button

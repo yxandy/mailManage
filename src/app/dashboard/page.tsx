@@ -5,7 +5,7 @@ import {
   listEmailAccountDomainOptions,
   listEmailAccounts,
 } from "@/lib/email-accounts/repository";
-import { normalizeDomainFilters } from "@/lib/email-accounts/schema";
+import { normalizeDomainFilters, type EmailAccountTypeCode } from "@/lib/email-accounts/schema";
 import { getCnyPrice } from "@/lib/system-settings/repository";
 
 type DashboardPageProps = {
@@ -53,24 +53,34 @@ function parseIsPlusFilter(value?: string): boolean {
   return value === "plus";
 }
 
+function parseTypeCodeFilter(value?: string): EmailAccountTypeCode {
+  if (value === "plus" || value === "g") {
+    return value;
+  }
+
+  return "free";
+}
+
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const session = await requireSession();
   const resolvedSearchParams = await searchParams;
-  const isPlus = parseIsPlusFilter(resolvedSearchParams.tier);
-  const tier = isPlus ? "plus" : "free";
+  const typeCode = parseTypeCodeFilter(resolvedSearchParams.tier);
+  const isPlus = parseIsPlusFilter(typeCode);
+  const tier = typeCode;
   const selectedDomains = parseDomainFilters(resolvedSearchParams.domain);
   const [data, stats, domainOptions, cnyPrice] = await Promise.all([
     listEmailAccounts({
       keyword: resolvedSearchParams.keyword,
       domains: selectedDomains,
+      typeCode,
       isPlus,
       linked: parseBooleanFilter(resolvedSearchParams.linked),
       expired: parseBooleanFilter(resolvedSearchParams.expired),
       page: parsePage(resolvedSearchParams.page),
       pageSize: 10,
     }),
-    getEmailAccountDashboardStats(isPlus),
-    listEmailAccountDomainOptions(isPlus),
+    getEmailAccountDashboardStats(typeCode),
+    listEmailAccountDomainOptions(typeCode),
     getCnyPrice(),
   ]);
 

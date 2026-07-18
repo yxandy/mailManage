@@ -15,6 +15,16 @@ export type EmailAccountFormInput = {
   linked_at?: string | null;
   is_expired: boolean | string;
   expired_at?: string | null;
+  type_states?: Array<{
+    type_code?: string;
+    enabled?: boolean | string;
+    is_registered?: boolean | string;
+    registered_at?: string | null;
+    is_linked_s2a?: boolean | string;
+    linked_at?: string | null;
+    is_expired?: boolean | string;
+    expired_at?: string | null;
+  }>;
 };
 
 export type EmailAccountWriteInput = {
@@ -31,6 +41,33 @@ export type EmailAccountWriteInput = {
   linked_at: string | null;
   is_expired: boolean;
   expired_at: string | null;
+};
+
+export type EmailAccountTypeCode = "free" | "plus" | "g";
+
+export const EMAIL_ACCOUNT_TYPE_CODES = ["free", "plus", "g"] as const;
+
+export type EmailAccountTypeStateWriteInput = {
+  type_code: EmailAccountTypeCode;
+  is_registered: boolean;
+  registered_at: string | null;
+  is_linked_s2a: boolean;
+  linked_at: string | null;
+  is_expired: boolean;
+  expired_at: string | null;
+};
+
+export type EmailAccountTypeStateRecord = EmailAccountTypeStateWriteInput & {
+  id?: string;
+  email_account_id?: string;
+  deleted_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type NormalizedEmailAccountInput = {
+  account: EmailAccountWriteInput;
+  typeStates: EmailAccountTypeStateWriteInput[];
 };
 
 export const PRESET_EMAIL_DOMAINS = [
@@ -126,6 +163,16 @@ function normalizeOptionalDateTime(value: string | null | undefined): string | n
   }
 
   return parsedDate.toISOString();
+}
+
+function normalizeEmailAccountTypeCode(value: string | null | undefined): EmailAccountTypeCode {
+  const normalized = normalizeText(value).toLowerCase();
+
+  if ((EMAIL_ACCOUNT_TYPE_CODES as readonly string[]).includes(normalized)) {
+    return normalized as EmailAccountTypeCode;
+  }
+
+  throw new Error("邮箱类型不正确");
 }
 
 function normalizeDateOnlyWithCurrentUtcHourMinute(value: string): string | null {
@@ -269,19 +316,94 @@ export function normalizeEmailAccountInput(
   };
 }
 
+export function normalizeEmailAccountWithTypeStatesInput(
+  input: EmailAccountFormInput,
+): NormalizedEmailAccountInput {
+  const account = normalizeEmailAccountInput(input);
+  const legacyState = getEmailAccountTypeStateFromLegacyInput(account);
+  const rawTypeStates = input.type_states ?? [];
+
+  if (rawTypeStates.length === 0) {
+    return {
+      account,
+      typeStates: [legacyState],
+    };
+  }
+
+  const typeStates = rawTypeStates
+    .filter((item) => toBoolean(item.enabled ?? false))
+    .map((item) => {
+      const typeCode = normalizeEmailAccountTypeCode(item.type_code);
+      const isRegistered = toBoolean(item.is_registered ?? false);
+      const isLinkedS2A = toBoolean(item.is_linked_s2a ?? false);
+      const isExpired = toBoolean(item.is_expired ?? false);
+
+      return {
+        type_code: typeCode,
+        is_registered: isRegistered,
+        registered_at: isRegistered ? normalizeOptionalDateTime(item.registered_at) : null,
+        is_linked_s2a: isLinkedS2A,
+        linked_at: isLinkedS2A ? normalizeOptionalDateTime(item.linked_at) : null,
+        is_expired: isExpired,
+        expired_at: isExpired ? normalizeOptionalDateTime(item.expired_at) : null,
+      };
+    });
+
+  if (typeStates.length === 0) {
+    throw new Error("请至少选择一个邮箱类型");
+  }
+
+  const primaryState =
+    typeStates.find((state) => state.type_code === legacyState.type_code) ?? typeStates[0];
+
+  return {
+    account: {
+      ...account,
+      is_plus: primaryState.type_code === "plus",
+      is_registered_cg: primaryState.is_registered,
+      cg_registered_at: primaryState.registered_at,
+      is_linked_s2a: primaryState.is_linked_s2a,
+      linked_at: primaryState.linked_at,
+      is_expired: primaryState.is_expired,
+      expired_at: primaryState.expired_at,
+    },
+    typeStates,
+  };
+}
+
 export type EmailAccountRecord = EmailAccountWriteInput & {
   id: string;
   deleted_at: string | null;
   created_at: string;
   updated_at: string;
+  type_states?: EmailAccountTypeStateRecord[];
 };
 
 export type EmailAccountFilters = {
   keyword?: string;
   domains?: string[];
+  typeCode?: EmailAccountTypeCode;
   isPlus?: boolean;
   linked?: boolean | null;
   expired?: boolean | null;
   page?: number;
   pageSize?: number;
 };
+
+export function getEmailAccountTypeCodeFromIsPlus(isPlus: boolean): EmailAccountTypeCode {
+  return isPlus ? "plus" : "free";
+}
+
+export function getEmailAccountTypeStateFromLegacyInput(
+  input: EmailAccountWriteInput,
+): EmailAccountTypeStateWriteInput {
+  return {
+    type_code: getEmailAccountTypeCodeFromIsPlus(input.is_plus),
+    is_registered: input.is_registered_cg,
+    registered_at: input.cg_registered_at,
+    is_linked_s2a: input.is_linked_s2a,
+    linked_at: input.linked_at,
+    is_expired: input.is_expired,
+    expired_at: input.expired_at,
+  };
+}

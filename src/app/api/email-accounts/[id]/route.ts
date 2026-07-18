@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentSession } from "@/lib/auth/auth";
-import { normalizeEmailAccountInput } from "@/lib/email-accounts/schema";
+import { normalizeEmailAccountWithTypeStatesInput } from "@/lib/email-accounts/schema";
 import { softDeleteEmailAccount, updateEmailAccount } from "@/lib/email-accounts/repository";
 
 export const runtime = "nodejs";
@@ -22,9 +22,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
     const body = await request.json();
-    const input = normalizeEmailAccountInput(body);
+    const input = normalizeEmailAccountWithTypeStatesInput(body);
 
-    await updateEmailAccount(id, input);
+    await updateEmailAccount(id, input.account, input.typeStates);
 
     return NextResponse.json({ success: true });
   } catch (error) {
