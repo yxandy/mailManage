@@ -43,6 +43,10 @@ test("email_account_type_states 表包含类型归属状态字段", () => {
   );
   assert.match(
     schemaSql,
+    /create table if not exists public\.email_account_type_states[\s\S]*\n\s*claimed_at\s+timestamptz,?/i,
+  );
+  assert.match(
+    schemaSql,
     /create table if not exists public\.email_account_type_states[\s\S]*\n\s*is_linked_s2a\s+boolean\s+not null\s+default false,?/i,
   );
   assert.match(
@@ -57,6 +61,23 @@ test("email_account_type_states 表按邮箱和类型约束有效记录唯一", 
   assert.match(
     schemaSql,
     /create unique index if not exists idx_email_account_type_states_unique_live_type\s+on public\.email_account_type_states \(email_account_id, type_code\)\s+where deleted_at is null;/i,
+  );
+});
+
+test("claim_next_unregistered_g_email 函数会原子领取未注册 G 邮箱", () => {
+  const schemaSql = readFileSync(schemaFilePath, "utf8");
+
+  assert.match(
+    schemaSql,
+    /create or replace function public\.claim_next_unregistered_g_email\(\)[\s\S]*for update of email_account_type_states skip locked/i,
+  );
+  assert.match(
+    schemaSql,
+    /create or replace function public\.claim_next_unregistered_g_email\(\)[\s\S]*and email_account_type_states\.claimed_at is null/i,
+  );
+  assert.match(
+    schemaSql,
+    /create or replace function public\.claim_next_unregistered_g_email\(\)[\s\S]*set\s+claimed_at = timezone\('utc', now\(\)\)/i,
   );
 });
 
